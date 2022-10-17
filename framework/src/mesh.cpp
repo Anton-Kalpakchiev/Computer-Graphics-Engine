@@ -133,6 +133,7 @@ std::vector<Mesh> loadMesh(const std::filesystem::path& file, bool centerAndNorm
                 }
                 mesh.material.ks = construct_vec3(objMaterial.specular);
                 mesh.material.shininess = objMaterial.shininess;
+                mesh.material.transparency = objMaterial.dissolve;
             }
 
             out.push_back(std::move(mesh));

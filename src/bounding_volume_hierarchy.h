@@ -3,9 +3,26 @@
 #include <array>
 #include <framework/ray.h>
 #include <vector>
+#include <variant>
 
 // Forward declaration.
 struct Scene;
+typedef glm::uvec3 Triangle;
+
+struct PrimitiveVariant {
+    std::variant<Triangle, Sphere> primitive;
+    glm::vec3 center;
+};
+
+struct Internal {
+    AxisAlignedBox aabb;
+    size_t left, right;    
+};
+
+struct Node {
+    std::variant<Internal, PrimitiveVariant> val;
+    size_t level; // used for debug
+};
 
 class BoundingVolumeHierarchy {
 public:
@@ -34,4 +51,10 @@ private:
     int m_numLevels;
     int m_numLeaves;
     Scene* m_pScene;
+    std::vector<Vertex> vertices;
+    std::vector<PrimitiveVariant> primitives;
+    std::vector<Node> nodes;
+    size_t root;
+
+    size_t createBVH(size_t beg, size_t end, size_t splitBy, size_t depth);
 };

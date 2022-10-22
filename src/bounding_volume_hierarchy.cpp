@@ -9,6 +9,7 @@
 #include <optional>
 #include <span>
 #include <functional>
+#include <stack>
 
 glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
     return a + b + c / 3.f;
@@ -181,6 +182,65 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // TODO: implement here the bounding volume hierarchy traversal.
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
-        return false;
+        bool hit = false;
+
+        std::stack<Node> stack = std::stack<Node>();
+        stack.push(nodes[root]);
+
+        int counter = 0;
+        while(counter < nodes.size()){
+            Node parent = stack.top();
+            stack.pop();
+
+            Ray ray2 = Ray();
+            ray2.direction = ray.direction;
+            ray2.origin = ray.direction;
+            ray2.t = ray.t;
+
+            if(parent.left == 0 && parent.right == 0){
+                Ray ray2 = Ray();
+                ray2.direction = ray.direction;
+                ray2.origin = ray.origin;
+                ray2.t = ray.t;
+                if(intersectRayWithShape(parent.aabb, ray2)){
+
+                }
+            }else{
+
+                Node left = nodes[parent.left];
+                Node right = nodes[parent.right];
+
+                float t1 = 0.0f;
+                float t2 = 0.0f;
+
+                if(intersectRayWithShape(left.aabb, ray)){
+                    t1 = ray.t;
+                }
+
+                if(intersectRayWithShape(right.aabb, ray2)){
+                    t2 = ray2.t;
+                }
+
+                if(t1 > 0.0f && t2 > 0.0f){
+                    if(t1 < t2){
+                        stack.push(right);
+                        stack.push(left);
+                    }else{
+                        stack.push(left);
+                        stack.push(right);
+                }
+                }else if(t1 > 0.0f){
+                    stack.push(left);
+                }else if(t2 > 0.0f){
+                    stack.push(right);
+                }
+            }
+            
+
+            counter++;
+        }
+
+
+        return hit;
     }
 }

@@ -17,6 +17,7 @@ struct Primitive {
 struct Node {
     AxisAlignedBox aabb;
     size_t left, right;    
+    size_t beg, end;
     size_t level; // used for debug
 };
 

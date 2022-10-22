@@ -55,18 +55,20 @@ size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t splitBy
     m_numLevels = std::max(m_numLevels, (int)depth);
     auto aabb = getBoundingBox(primitives, beg, end, vertices).value();
     if (beg + 1 == end) {
-        nodes.push_back(Node { aabb, beg, end, depth });
+        nodes.push_back(Node { aabb, 0, 0, beg, end, depth });
         return nodes.size();
     }
     auto byX = [](const auto& a, const auto& b) { return a.center.x < b.center.x; };
     auto byY = [](const auto& a, const auto& b) { return a.center.y < b.center.y; };
     auto byZ = [](const auto& a, const auto& b) { return a.center.z < b.center.z; };
     const std::function<bool(const Primitive&, const Primitive&)> comparators[] = {byX, byY, byZ};
-    std::sort(primitives.begin() + beg, primitives.begin() + end, comparators[splitBy]);
+
     size_t mid = beg + (end - beg) / 2;
+    std::nth_element(primitives.begin() + beg, primitives.begin() + mid, primitives.begin() + end, comparators[splitBy]);
+
     auto left = createBVH(beg, mid, (splitBy + 1) % 3, depth + 1);
     auto right = createBVH(mid, end, (splitBy + 1) % 3, depth + 1);
-    nodes.push_back(Node {aabb, left, right, depth });
+    nodes.push_back(Node {aabb, left, right, beg, end, depth });
     return nodes.size();
 }
 
@@ -103,7 +105,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
 // slider in the UI how many steps it should display for Visual Debug 1.
 int BoundingVolumeHierarchy::numLevels() const
 {
-    return std::min(m_numLevels, 10);
+    return std::min(m_numLevels, 12);
 }
 
 // Return the number of leaf nodes in the tree that you constructed. This is used to tell the

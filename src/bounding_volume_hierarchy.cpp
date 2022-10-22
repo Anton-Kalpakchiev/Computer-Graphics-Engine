@@ -54,7 +54,7 @@ size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t splitBy
     m_numLevels = std::max(m_numLevels, (int)depth);
     auto aabb = getBoundingBox(primitives, beg, end, vertices).value();
     if (beg + 1 == end) {
-        nodes.push_back(Node { aabb, beg, end, depth });
+        nodes.push_back(Node { aabb, 0, 0, beg, end, depth });
         return nodes.size();
     }
     auto byX = [](const auto& a, const auto& b) { return a.center.x < b.center.x; };
@@ -67,7 +67,7 @@ size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t splitBy
 
     auto left = createBVH(beg, mid, (splitBy + 1) % 3, depth + 1);
     auto right = createBVH(mid, end, (splitBy + 1) % 3, depth + 1);
-    nodes.push_back(Node {aabb, left, right, depth });
+    nodes.push_back(Node {aabb, left, right, beg, end, depth });
     return nodes.size();
 }
 

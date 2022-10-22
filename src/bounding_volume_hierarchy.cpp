@@ -8,28 +8,28 @@
 #include <algorithm>
 #include <optional>
 #include <span>
-
+#include <functional>
 
 glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
     return a + b + c / 3.f;
 }
 
-std::optional<AxisAlignedBox> getBoundingBox(const std::span<PrimitiveVariant>& primitives, size_t beg, size_t end, const std::span<Vertex>& vertices) {
+std::optional<AxisAlignedBox> getBoundingBox(const std::span<Primitive>& primitives, size_t beg, size_t end, const std::span<Vertex>& vertices) {
     std::optional<AxisAlignedBox> res;
     
     for (auto it = primitives.begin() + beg; it != primitives.begin() + end; it++) {
         float xMin, xMax, yMin, yMax, zMin, zMax;
 
-        if (it->primitive.index() == 0) { // check if it's a triangle
-            auto t = std::get<Triangle>(it->primitive);
+        if (it->p.index() == 0) { // check if it's a triangle
+            auto t = std::get<Triangle>(it->p);
             xMin = std::min({ vertices[t.x].position.x, vertices[t.y].position.x, vertices[t.z].position.x });
             xMax = std::max({ vertices[t.x].position.x, vertices[t.y].position.x, vertices[t.z].position.x });
             yMin = std::min({ vertices[t.x].position.y, vertices[t.y].position.y, vertices[t.z].position.y });
             yMax = std::max({ vertices[t.x].position.y, vertices[t.y].position.y, vertices[t.z].position.y });
             zMin = std::min({ vertices[t.x].position.z, vertices[t.y].position.z, vertices[t.z].position.z });
             zMax = std::max({ vertices[t.x].position.z, vertices[t.y].position.z, vertices[t.z].position.z });
-        } else if (it->primitive.index() == 1) { // check if it's a sphere
-            auto s = std::get<Sphere>(it->primitive);
+        } else if (it->p.index() == 1) { // check if it's a sphere
+            auto s = std::get<Sphere>(it->p);
             xMin = s.center.x - s.radius;
             xMax = s.center.x + s.radius;
             yMin = s.center.y - s.radius;
@@ -52,27 +52,20 @@ std::optional<AxisAlignedBox> getBoundingBox(const std::span<PrimitiveVariant>& 
 
 size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t splitBy, size_t depth) {
     m_numLevels = std::max(m_numLevels, (int)depth);
+    auto aabb = getBoundingBox(primitives, beg, end, vertices).value();
     if (beg + 1 == end) {
-        nodes.push_back(Node { primitives[beg], depth });
+        nodes.push_back(Node { aabb, beg, end, depth });
         return nodes.size();
     }
-    auto aabb = getBoundingBox(primitives, beg, end, vertices).value();
-    if (splitBy == 0) {
-        auto byX = [](const auto& a, const auto& b) { return a.center.x < b.center.x; };
-        std::sort(primitives.begin() + beg, primitives.begin() + end, byX);
-    }
-    else if (splitBy == 1) {
-        auto byY = [](const auto& a, const auto& b) { return a.center.y < b.center.y; };
-        std::sort(primitives.begin() + beg, primitives.begin() + end, byY);
-    }
-    else if (splitBy == 2) {
-        auto byZ = [](const auto& a, const auto& b) { return a.center.z < b.center.z; };
-        std::sort(primitives.begin() + beg, primitives.begin() + end, byZ);
-    }
+    auto byX = [](const auto& a, const auto& b) { return a.center.x < b.center.x; };
+    auto byY = [](const auto& a, const auto& b) { return a.center.y < b.center.y; };
+    auto byZ = [](const auto& a, const auto& b) { return a.center.z < b.center.z; };
+    const std::function<bool(const Primitive&, const Primitive&)> comparators[] = {byX, byY, byZ};
+    std::sort(primitives.begin() + beg, primitives.begin() + end, comparators[splitBy]);
     size_t mid = beg + (end - beg) / 2;
     auto left = createBVH(beg, mid, (splitBy + 1) % 3, depth + 1);
     auto right = createBVH(mid, end, (splitBy + 1) % 3, depth + 1);
-    nodes.push_back(Node {Internal { aabb, left, right }, depth });
+    nodes.push_back(Node {aabb, left, right, depth });
     return nodes.size();
 }
 
@@ -89,13 +82,13 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
             auto p1 = mesh.vertices[t.x].position;
             auto p2 = mesh.vertices[t.y].position;
             auto p3 = mesh.vertices[t.z].position;
-            return PrimitiveVariant { glm::uvec3(t.x + offset, t.y + offset, t.z + offset),
+            return Primitive{ glm::uvec3(t.x + offset, t.y + offset, t.z + offset),
                               triangleCenter(p1, p2, p3) };
         });
     }
     // Get all spheres of the scene into the BVH
     std::transform(pScene->spheres.begin(), pScene->spheres.end(), std::back_inserter(primitives), [](auto s) {
-        return PrimitiveVariant { Sphere(s), glm::vec3(s.center) };
+        return Primitive{ Sphere(s), glm::vec3(s.center) };
     });
 
     // We have all the primitives and their centers in the primitves vector
@@ -129,8 +122,8 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
     //drawShape(aabb, DrawMode::Filled, glm::vec3(0.0f, 1.0f, 0.0f), 0.2f);
 
     for (const auto& node : nodes) {
-        if (node.val.index() == 0 && node.level == level) {
-            drawAABB(std::get<0>(node.val).aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
+        if (node.level == level) {
+            drawAABB(node.aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
         }
     }
     // Draw the AABB as a (white) wireframe box.

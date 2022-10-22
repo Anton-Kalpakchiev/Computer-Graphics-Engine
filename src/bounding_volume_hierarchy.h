@@ -9,18 +9,14 @@
 struct Scene;
 typedef glm::uvec3 Triangle;
 
-struct PrimitiveVariant {
-    std::variant<Triangle, Sphere> primitive;
+struct Primitive {
+    std::variant<Triangle, Sphere> p;
     glm::vec3 center;
 };
 
-struct Internal {
+struct Node {
     AxisAlignedBox aabb;
     size_t left, right;    
-};
-
-struct Node {
-    std::variant<Internal, PrimitiveVariant> val;
     size_t level; // used for debug
 };
 
@@ -52,7 +48,7 @@ private:
     int m_numLeaves;
     Scene* m_pScene;
     std::vector<Vertex> vertices;
-    std::vector<PrimitiveVariant> primitives;
+    std::vector<Primitive> primitives;
     std::vector<Node> nodes;
     size_t root;
 

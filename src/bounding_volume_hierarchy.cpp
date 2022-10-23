@@ -75,6 +75,9 @@ size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t splitBy
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
 {
+    
+    m_numLevels = 0;
+
     // Get all triangles of the scene into the BVH
     for (const auto& mesh : pScene->meshes) {
 
@@ -187,59 +190,65 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         bool hit = false;
 
         std::stack<Node> stack = std::stack<Node>();
-        stack.push(nodes[root]);
+        stack.push(nodes[root - 1]);
 
-        int counter = 0;
-        while(counter < nodes.size()){
+        while(!stack.empty() && !hit){
+
             Node parent = stack.top();
             stack.pop();
 
-            Ray ray2 = Ray();
-            ray2.direction = ray.direction;
-            ray2.origin = ray.direction;
-            ray2.t = ray.t;
+            float rollBack = ray.t;
 
             if(parent.left == 0 && parent.right == 0){
-                Ray ray2 = Ray();
-                ray2.direction = ray.direction;
-                ray2.origin = ray.origin;
-                ray2.t = ray.t;
-                if(intersectRayWithShape(parent.aabb, ray2)){
 
+                Primitive p = primitives[parent.beg];
+                if(p.p.index() == 0){
+                    auto t = std::get<Triangle>(p.p);
+                    if(intersectRayWithTriangle(vertices[t.x].position, vertices[t.y].position, vertices[t.z].position, ray, hitInfo)){
+                        hit = true;
+                        break;
+                    }
+                }else{
+                    auto s = std::get<Sphere>(p.p);
+                    if(intersectRayWithShape(s, ray, hitInfo)){
+                        hit = true;
+                        break;
+                    }
                 }
+
             }else{
 
-                Node left = nodes[parent.left];
-                Node right = nodes[parent.right];
+                Node left = nodes[parent.left - 1];
+                Node right = nodes[parent.right - 1];
 
-                float t1 = 0.0f;
-                float t2 = 0.0f;
+                float t_left = -1.0f;
+                float t_right = -1.0f;
 
                 if(intersectRayWithShape(left.aabb, ray)){
-                    t1 = ray.t;
+                    t_left = ray.t;
+                    ray.t = rollBack;
                 }
 
-                if(intersectRayWithShape(right.aabb, ray2)){
-                    t2 = ray2.t;
+                if(intersectRayWithShape(right.aabb, ray)){
+                    t_right = ray.t;
+                    ray.t = rollBack;
                 }
 
-                if(t1 > 0.0f && t2 > 0.0f){
-                    if(t1 < t2){
+                if(t_left > 0.0f && t_right > 0.0f){
+                    if(t_left < t_right){
                         stack.push(right);
                         stack.push(left);
                     }else{
                         stack.push(left);
                         stack.push(right);
                 }
-                }else if(t1 > 0.0f){
+                }else if(t_left > 0.0f){
                     stack.push(left);
-                }else if(t2 > 0.0f){
+                }else if(t_right > 0.0f){
                     stack.push(right);
                 }
-            }
-            
 
-            counter++;
+            }
         }
 
 

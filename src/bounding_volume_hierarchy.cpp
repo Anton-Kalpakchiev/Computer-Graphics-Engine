@@ -193,7 +193,9 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         std::stack<Node> stack = std::stack<Node>();
         stack.push(nodes[root]);
 
-        while(!stack.empty() && !hit){
+        std::vector<float> t_vec = std::vector<float>();
+
+        while(!stack.empty()){
 
             Node parent = stack.top();
             stack.pop();
@@ -206,14 +208,14 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 if(p.p.index() == 0){
                     auto t = std::get<Triangle>(p.p);
                     if(intersectRayWithTriangle(vertices[t.x].position, vertices[t.y].position, vertices[t.z].position, ray, hitInfo)){
-                        hit = true;
-                        break;
+                        t_vec.push_back(ray.t);
+                        ray.t = rollBack;
                     }
                 }else{
                     auto s = std::get<Sphere>(p.p);
                     if(intersectRayWithShape(s, ray, hitInfo)){
-                        hit = true;
-                        break;
+                        t_vec.push_back(ray.t);
+                        ray.t = rollBack;
                     }
                 }
 
@@ -252,6 +254,10 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
             }
         }
 
+        if(t_vec.size() > 0){
+            hit = true;
+            ray.t = *min_element(t_vec.begin(), t_vec.end());
+        }
 
         return hit;
     }

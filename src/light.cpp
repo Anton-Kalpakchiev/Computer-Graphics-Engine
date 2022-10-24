@@ -86,10 +86,26 @@ float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& deb
 glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, const Features& features, Ray ray, HitInfo hitInfo)
 {
     if (features.enableShading) {
-        // If shading is enabled, compute the contribution from all lights.
+        glm::vec3 result = { 0.0f, 0.0f, 0.0f };
 
+        // If shading is enabled, compute the contribution from all lights.
+        for (const auto& light : scene.lights) {
+                 if (std::holds_alternative<PointLight>(light)) {
+                     const PointLight pointLight = std::get<PointLight>(light);
+                     glm::vec3 color = computeShading(pointLight.position, pointLight.color, features, ray, hitInfo);
+                     result += color;
+                 } else if (std::holds_alternative<SegmentLight>(light)) {
+                     const SegmentLight segmentLight = std::get<SegmentLight>(light);
+                     // Perform your calculations for a segment light.
+                 } else if (std::holds_alternative<ParallelogramLight>(light)) {
+                     const ParallelogramLight parallelogramLight = std::get<ParallelogramLight>(light);
+                     // Perform your calculations for a parallelogram light.
+                 }
+             }
+
+        return result;
         // TODO: replace this by your own implementation of shading
-        return hitInfo.material.kd;
+        
 
     } else {
         // If shading is disabled, return the albedo of the material.

@@ -10,6 +10,7 @@
 #include <span>
 #include <functional>
 #include <stack>
+#include <iostream>
 
 glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
     return a + b + c / 3.f;
@@ -56,7 +57,7 @@ size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t splitBy
     auto aabb = getBoundingBox(primitives, beg, end, vertices).value();
     if (beg + 1 == end) {
         nodes.push_back(Node { aabb, 0, 0, beg, end, depth });
-        return nodes.size();
+        return nodes.size() - 1;
     }
     auto byX = [](const auto& a, const auto& b) { return a.center.x < b.center.x; };
     auto byY = [](const auto& a, const auto& b) { return a.center.y < b.center.y; };
@@ -69,7 +70,7 @@ size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t splitBy
     auto left = createBVH(beg, mid, (splitBy + 1) % 3, depth + 1);
     auto right = createBVH(mid, end, (splitBy + 1) % 3, depth + 1);
     nodes.push_back(Node {aabb, left, right, beg, end, depth });
-    return nodes.size();
+    return nodes.size() - 1;
 }
 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
@@ -190,7 +191,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         bool hit = false;
 
         std::stack<Node> stack = std::stack<Node>();
-        stack.push(nodes[root - 1]);
+        stack.push(nodes[root]);
 
         while(!stack.empty() && !hit){
 
@@ -218,8 +219,8 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
             }else{
 
-                Node left = nodes[parent.left - 1];
-                Node right = nodes[parent.right - 1];
+                Node left = nodes[parent.left];
+                Node right = nodes[parent.right];
 
                 float t_left = -1.0f;
                 float t_right = -1.0f;

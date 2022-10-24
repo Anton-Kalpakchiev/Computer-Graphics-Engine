@@ -14,16 +14,25 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
-
         if (features.enableRecursive) {
             Ray reflection = computeReflectionRay(ray, hitInfo);
-            // TODO: put your own implementation of recursive ray tracing here.
+            if(!(reflection.direction.x == 0.0f && reflection.direction.y == 0.0f && reflection.direction.z == 0.0f && reflection.origin.x == 0.0f
+                && reflection.origin.y == 0.0f && reflection.origin.z == 0.0f && reflection.t == 0.0f)){
+                    if(rayDepth > 0){
+                        drawRay(reflection, glm::vec3(1.0f));
+                        Lo += getFinalColor(scene, bvh, reflection, features, rayDepth - 1);
+                    }
+            }
         }
 
         // Draw a white debug ray if the ray hits.
-        drawRay(ray, Lo);
+        if(features.enableShading && !features.enableRecursive && !features.enableAccelStructure){
+            drawRay(ray, Lo);
+        }else{
+            drawRay(ray, glm::vec3(1.0f));
+        }
         // TO REMOVE: test a ray towards the first light source (assumes it's a point light source)
-        testVisibilityLightSample(std::get<0>(scene.lights.front()).position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
+        Lo *= testVisibilityLightSample(std::get<0>(scene.lights.front()).position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
 
         // Set the color of the pixel to white if the ray hits.
         return Lo;
@@ -50,7 +59,7 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
                 float(y) / float(windowResolution.y) * 2.0f - 1.0f
             };
             const Ray cameraRay = camera.generateRay(normalizedPixelPos);
-            screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features));
+            screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features, 5));
         }
     }
 }

@@ -146,7 +146,7 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     // once you find the leaf node, you can use the function drawTriangle (from draw.h) to draw the contained primitives
     for (const auto& node : nodes) {
         if (node.data[0]) leafIdx--;
-        if (leafIdx < 0) {
+        if (leafIdx == 0) {
             drawAABB(node.aabb, DrawMode::Wireframe, glm::vec3(.2f, 1.f, .2f), .5f);
             setColor({1.f, 1.f, 0.f});
             for (const auto& p : std::ranges::subrange(primitives.begin() + node.data[2], primitives.begin() + node.data[3])) {

@@ -7,7 +7,12 @@
 
 // Forward declaration.
 struct Scene;
-typedef glm::uvec3 Triangle;
+struct Triangle {
+    glm::uvec3 vertexIdx;
+    
+    // The index of the mesh int the meshes vector in the scene, useful to retrieve the material
+    size_t meshIdx;
+};
 
 struct Primitive {
     std::variant<Triangle, Sphere> p;
@@ -16,10 +21,17 @@ struct Primitive {
 
 struct Node {
     AxisAlignedBox aabb;
-    size_t left, right;    
-    size_t beg, end;
-    size_t level; // used for debug
+
+    // First element: 0 -> internal node, 1 -> leaf node (index 0)
+    // If internal node: depth, beg, end, left, right (index 1-5)
+    // If leaf node: depth, beg, end (index 1-3)
+
+    // beg, end - index-pointers into the primitives vector (beg - incl, end - excl)
+    // left, right - indexes of child nodes
+    std::vector<size_t> data;
 };
+
+const size_t MAX_DEPTH = 8;
 
 class BoundingVolumeHierarchy {
 public:

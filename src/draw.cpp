@@ -167,6 +167,11 @@ void drawAABB(const AxisAlignedBox& box, DrawMode drawMode, const glm::vec3& col
     glPopAttrib();
 }
 
+void setColor(const glm::vec3& color) 
+{
+    glColor3f(color.r, color.g, color.b);
+}
+
 void drawScene(const Scene& scene)
 {
     for (const auto& mesh : scene.meshes)

@@ -6,6 +6,7 @@ DISABLE_WARNINGS_PUSH()
 #include <glm/geometric.hpp>
 DISABLE_WARNINGS_POP()
 #include <cmath>
+#include <fmt/printf.h>
 
 
 // samples a segment light source
@@ -32,7 +33,12 @@ float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& deb
                                 const BvhInterface& bvh, const Features& features, Ray ray, HitInfo hitInfo)
 {
     if (!features.enableHardShadow) return 1.0;
-    auto p = ray.origin + ray.direction * ray.t;
+    // normalize the ray direction, recalculate t
+    ray.t *= glm::length(ray.direction);
+    ray.direction = glm::normalize(ray.direction);
+    
+    // add an offset to the ray to prevent self intersections
+    auto p = ray.origin + ray.direction * (ray.t - .001f);
     Ray toLight = Ray {p, samplePos - p, 1.f };
     bool hit = bvh.intersect(toLight, hitInfo, features);
     if (hit) {

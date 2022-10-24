@@ -14,13 +14,14 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
+
         if (features.enableRecursive) {
             Ray reflection = computeReflectionRay(ray, hitInfo);
             // TODO: put your own implementation of recursive ray tracing here.
         }
 
         // Draw a white debug ray if the ray hits.
-        drawRay(ray, glm::vec3(1.0f));
+        drawRay(ray, Lo);
         // TO REMOVE: test a ray towards the first light source (assumes it's a point light source)
         testVisibilityLightSample(std::get<0>(scene.lights.front()).position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
 

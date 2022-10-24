@@ -12,6 +12,8 @@
 #include <ranges>
 #include <framework/variant_helper.h>
 #include <variant>
+#include <stack>
+#include <iostream>
 
 glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
     return a + b + c / 3.f;
@@ -82,6 +84,9 @@ size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t splitBy
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
 {
+    
+    m_numLevels = 0;
+
     // Get all triangles of the scene into the BVH
     for (size_t i = 0; i < pScene->meshes.size(); i++) {
         const auto& mesh = pScene->meshes[i];
@@ -182,6 +187,10 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 const auto v2 = mesh.vertices[tri[2]];
                 if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
                     hitInfo.material = mesh.material;
+                    glm::vec3 first = v0.position - v1.position;
+                    glm::vec3 second = v0.position - v2.position;
+                    glm::vec3 normal = glm::cross(first, second);
+                    hitInfo.normal = normal;
                     hit = true;
                 }
             }
@@ -194,6 +203,77 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // TODO: implement here the bounding volume hierarchy traversal.
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
-        return false;
+        bool hit = false;
+
+        std::stack<Node> stack = std::stack<Node>();
+        stack.push(nodes[root]);
+
+        std::vector<float> t_vec = std::vector<float>();
+
+        while(!stack.empty()){
+
+            Node parent = stack.top();
+            stack.pop();
+
+            float rollBack = ray.t;
+
+            if(parent.left == 0 && parent.right == 0){
+
+                Primitive p = primitives[parent.beg];
+                if(p.p.index() == 0){
+                    auto t = std::get<Triangle>(p.p);
+                    if(intersectRayWithTriangle(vertices[t.x].position, vertices[t.y].position, vertices[t.z].position, ray, hitInfo)){
+                        t_vec.push_back(ray.t);
+                        ray.t = rollBack;
+                    }
+                }else{
+                    auto s = std::get<Sphere>(p.p);
+                    if(intersectRayWithShape(s, ray, hitInfo)){
+                        t_vec.push_back(ray.t);
+                        ray.t = rollBack;
+                    }
+                }
+
+            }else{
+
+                Node left = nodes[parent.left];
+                Node right = nodes[parent.right];
+
+                float t_left = -1.0f;
+                float t_right = -1.0f;
+
+                if(intersectRayWithShape(left.aabb, ray)){
+                    t_left = ray.t;
+                    ray.t = rollBack;
+                }
+
+                if(intersectRayWithShape(right.aabb, ray)){
+                    t_right = ray.t;
+                    ray.t = rollBack;
+                }
+
+                if(t_left > 0.0f && t_right > 0.0f){
+                    if(t_left < t_right){
+                        stack.push(right);
+                        stack.push(left);
+                    }else{
+                        stack.push(left);
+                        stack.push(right);
+                }
+                }else if(t_left > 0.0f){
+                    stack.push(left);
+                }else if(t_right > 0.0f){
+                    stack.push(right);
+                }
+
+            }
+        }
+
+        if(t_vec.size() > 0){
+            hit = true;
+            ray.t = *min_element(t_vec.begin(), t_vec.end());
+        }
+
+        return hit;
     }
 }

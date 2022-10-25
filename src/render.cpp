@@ -2,6 +2,7 @@
 #include "intersect.h"
 #include "light.h"
 #include "screen.h"
+#include <iostream>
 #include <framework/trackball.h>
 #ifdef NDEBUG
 #include <omp.h>
@@ -19,14 +20,13 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             if(!(reflection.direction.x == 0.0f && reflection.direction.y == 0.0f && reflection.direction.z == 0.0f && reflection.origin.x == 0.0f
                 && reflection.origin.y == 0.0f && reflection.origin.z == 0.0f && reflection.t == 0.0f)){
                     if(rayDepth > 0){
-                        drawRay(reflection, glm::vec3(1.0f));
                         Lo += getFinalColor(scene, bvh, reflection, features, rayDepth - 1);
                     }
             }
         }
 
         // Draw a white debug ray if the ray hits.
-        if(features.enableShading && !features.enableRecursive && !features.enableAccelStructure){
+        if(features.enableShading){
             drawRay(ray, Lo);
         }else{
             drawRay(ray, glm::vec3(1.0f));

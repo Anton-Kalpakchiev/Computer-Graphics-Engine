@@ -208,7 +208,11 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         std::stack<Node> stack = std::stack<Node>();
         stack.push(nodes[root]);
 
-        std::vector<float> t_vec = std::vector<float>();
+        float closest = std::numeric_limits<float>::max();
+        int meshIdx = -1;
+        glm::uvec3 tri = glm::uvec3();
+        Sphere sp = Sphere();
+        bool sphere = false;
 
         while(!stack.empty()){
 
@@ -217,27 +221,40 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
             float rollBack = ray.t;
 
-            if(parent.left == 0 && parent.right == 0){
+            if(parent.data[0] == 1){
 
-                Primitive p = primitives[parent.beg];
-                if(p.p.index() == 0){
-                    auto t = std::get<Triangle>(p.p);
-                    if(intersectRayWithTriangle(vertices[t.x].position, vertices[t.y].position, vertices[t.z].position, ray, hitInfo)){
-                        t_vec.push_back(ray.t);
-                        ray.t = rollBack;
+                size_t beg = parent.data[2];
+                size_t end = parent.data[3];
+                while(beg < end){
+                    Primitive p = primitives[parent.data[2]];
+                    if(p.p.index() == 0){
+                        auto t = std::get<Triangle>(p.p);
+                        if(intersectRayWithTriangle(vertices[t.vertexIdx.x].position, vertices[t.vertexIdx.y].position, vertices[t.vertexIdx.z].position, ray, hitInfo)){
+                            if(ray.t < closest){
+                                closest = ray.t;
+                                meshIdx = t.meshIdx;
+                                tri = t.vertexIdx;
+                            }
+                            ray.t = rollBack;
+                        }
+                    }else{
+                        auto s = std::get<Sphere>(p.p);
+                        if(intersectRayWithShape(s, ray, hitInfo)){
+                            if(ray.t < closest){
+                                closest = ray.t;
+                                sphere = true;
+                                sp = s;
+                            }
+                            ray.t = rollBack;
+                        }   
                     }
-                }else{
-                    auto s = std::get<Sphere>(p.p);
-                    if(intersectRayWithShape(s, ray, hitInfo)){
-                        t_vec.push_back(ray.t);
-                        ray.t = rollBack;
-                    }
+                    beg++;
                 }
 
             }else{
 
-                Node left = nodes[parent.left];
-                Node right = nodes[parent.right];
+                Node left = nodes[parent.data[4]];
+                Node right = nodes[parent.data[5]];
 
                 float t_left = -1.0f;
                 float t_right = -1.0f;
@@ -269,9 +286,18 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
             }
         }
 
-        if(t_vec.size() > 0){
+        if(closest < std::numeric_limits<float>::max()){
+            ray.t = closest;
             hit = true;
-            ray.t = *min_element(t_vec.begin(), t_vec.end());
+            if(!sphere){
+                hitInfo.material = m_pScene->meshes[meshIdx].material;
+                glm::vec3 first = vertices[tri.x].position - vertices[tri.y].position;
+                glm::vec3 second = vertices[tri.x].position - vertices[tri.z].position;
+                glm::vec3 normal = glm::normalize(glm::cross(first, second));
+                hitInfo.normal = normal;
+            }else{ 
+                hitInfo.material = sp.material;
+            }
         }
 
         return hit;

@@ -210,11 +210,10 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
         float closest = std::numeric_limits<float>::max();
         float meshIdx = -1;
-        Material m = Material();
         Sphere sp = Sphere();
-
-        bool sphere = false;
         glm::uvec3 tri = glm::uvec3();
+        bool sphere = false;
+        
 
         while(!stack.empty()){
 
@@ -225,28 +224,34 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
             if(parent.data[0] == 1){
 
-                Primitive p = primitives[parent.data[2]];
-                if(p.p.index() == 0){
-                    auto t = std::get<Triangle>(p.p);
-                    if(intersectRayWithTriangle(vertices[t.vertexIdx.x].position, vertices[t.vertexIdx.y].position, vertices[t.vertexIdx.z].position, ray, hitInfo)){
-                        if(ray.t < closest){
-                            closest = ray.t;
-                            meshIdx = t.meshIdx;
-                            tri = t.vertexIdx;
+                size_t beg = parent.data[2];
+                size_t end = parent.data[3];
+                while(beg < end){
+                    Primitive p = primitives[beg];
+                    if(p.p.index() == 0){
+                        auto t = std::get<Triangle>(p.p);
+                        if(intersectRayWithTriangle(vertices[t.vertexIdx.x].position, vertices[t.vertexIdx.y].position, vertices[t.vertexIdx.z].position, ray, hitInfo)){
+                            if(ray.t < closest){
+                                closest = ray.t;
+                                meshIdx = t.meshIdx;
+                                tri.x = t.vertexIdx.x;
+                                tri.y = t.vertexIdx.y;
+                                tri.z = t.vertexIdx.z;
+                            }
+                            ray.t = rollBack;
                         }
-                        ray.t = rollBack;
-                    }
-                }else{
-                    auto s = std::get<Sphere>(p.p);
-                    if(intersectRayWithShape(s, ray, hitInfo)){
-                        if(ray.t < closest){
-                            closest = ray.t;
-                            m = s.material;
-                            sp = s;
-                            sphere = true;
+                    }else{
+                        auto s = std::get<Sphere>(p.p);
+                        if(intersectRayWithShape(s, ray, hitInfo)){
+                            if(ray.t < closest){
+                                closest = ray.t;
+                                sp = s;
+                                sphere = true;
+                            }
+                            ray.t = rollBack;
                         }
-                        ray.t = rollBack;
                     }
+                    beg++;
                 }
 
             }else{
@@ -281,6 +286,8 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                     stack.push(left);
                 }else if(t_right > 0.0f){
                     stack.push(right);
+                }else{
+                    drawAABB(parent.aabb, DrawMode::Wireframe, {0.9f, 0.0f, 0.0f});
                 }
 
             }
@@ -291,9 +298,15 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
             ray.t = closest;
             if(!sphere){
                 hitInfo.material = m_pScene->meshes[meshIdx].material;
+                if(!features.enableNormalInterp){
+                    glm::vec3 first = vertices[tri.x].position - vertices[tri.y].position;
+                    glm::vec3 second = vertices[tri.x].position - vertices[tri.z].position;
+                    glm::vec3 normal = glm::normalize(glm::cross(first, second));
+                    hitInfo.normal = normal;
+                }
                 drawTriangle(vertices[tri.x], vertices[tri.y], vertices[tri.z]);
             }else{
-                hitInfo.material = m;
+                hitInfo.material = sp.material;
                 drawSphere(sp);
             }
         }

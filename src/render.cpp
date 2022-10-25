@@ -23,7 +23,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         // Draw a white debug ray if the ray hits.
         drawRay(ray, Lo);
         // TO REMOVE: test a ray towards the first light source (assumes it's a point light source)
-        testVisibilityLightSample(std::get<0>(scene.lights.front()).position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
+        Lo *= testVisibilityLightSample(std::get<0>(scene.lights.front()).position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
 
         // Set the color of the pixel to white if the ray hits.
         return Lo;

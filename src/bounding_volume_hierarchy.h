@@ -31,7 +31,7 @@ struct Node {
     std::vector<size_t> data;
 };
 
-const size_t MAX_DEPTH = 20;
+const size_t MAX_DEPTH = 18;
 
 class BoundingVolumeHierarchy {
 public:

@@ -13,7 +13,6 @@
 #include <framework/variant_helper.h>
 #include <variant>
 #include <stack>
-#include <iostream>
 
 glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
     return a + b + c / 3.f;
@@ -205,14 +204,11 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
         bool hit = false;
 
-        std::stack<Node> stack = std::stack<Node>();
+        auto stack = std::stack<Node>();
         stack.push(nodes[root]);
 
         float closest = std::numeric_limits<float>::max();
-        int meshIdx = -1;
-        glm::uvec3 tri = glm::uvec3();
-        Sphere sp = Sphere();
-        bool sphere = false;
+        std::variant<Triangle, Sphere> var;
 
         while(!stack.empty()){
 
@@ -226,24 +222,22 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 size_t beg = parent.data[2];
                 size_t end = parent.data[3];
                 while(beg < end){
-                    Primitive p = primitives[parent.data[2]];
+                    const Primitive& p = primitives[beg];
                     if(p.p.index() == 0){
-                        auto t = std::get<Triangle>(p.p);
+                        const auto& t = std::get<Triangle>(p.p);
                         if(intersectRayWithTriangle(vertices[t.vertexIdx.x].position, vertices[t.vertexIdx.y].position, vertices[t.vertexIdx.z].position, ray, hitInfo)){
                             if(ray.t < closest){
                                 closest = ray.t;
-                                meshIdx = t.meshIdx;
-                                tri = t.vertexIdx;
+                                var = std::get<Triangle>(p.p);
                             }
                             ray.t = rollBack;
                         }
                     }else{
-                        auto s = std::get<Sphere>(p.p);
+                        const auto& s = std::get<Sphere>(p.p);
                         if(intersectRayWithShape(s, ray, hitInfo)){
                             if(ray.t < closest){
                                 closest = ray.t;
-                                sphere = true;
-                                sp = s;
+                                var = std::get<Sphere>(p.p);
                             }
                             ray.t = rollBack;
                         }   
@@ -289,14 +283,16 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         if(closest < std::numeric_limits<float>::max()){
             ray.t = closest;
             hit = true;
-            if(!sphere){
-                hitInfo.material = m_pScene->meshes[meshIdx].material;
-                glm::vec3 first = vertices[tri.x].position - vertices[tri.y].position;
-                glm::vec3 second = vertices[tri.x].position - vertices[tri.z].position;
+            if(std::holds_alternative<Triangle>(var)){
+                const auto& t = std::get<Triangle>(var);
+                hitInfo.material = m_pScene->meshes[t.meshIdx].material;
+                glm::vec3 first = vertices[t.vertexIdx.x].position - vertices[t.vertexIdx.y].position;
+                glm::vec3 second = vertices[t.vertexIdx.x].position - vertices[t.vertexIdx.z].position;
                 glm::vec3 normal = glm::normalize(glm::cross(first, second));
                 hitInfo.normal = normal;
-            }else{ 
-                hitInfo.material = sp.material;
+            }else{
+                const auto& s = std::get<Sphere>(var); 
+                hitInfo.material = s.material;
             }
         }
 

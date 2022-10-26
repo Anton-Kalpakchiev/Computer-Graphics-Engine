@@ -17,8 +17,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
         if (features.enableRecursive) {
             Ray reflection = computeReflectionRay(ray, hitInfo);
-            if(!(reflection.direction.x == 0.0f && reflection.direction.y == 0.0f && reflection.direction.z == 0.0f && reflection.origin.x == 0.0f
-                && reflection.origin.y == 0.0f && reflection.origin.z == 0.0f && reflection.t == 0.0f)){
+            if(!(reflection.direction == glm::vec3(0.0f) && reflection.origin == glm::vec3(0.0f) && reflection.t == 0.0f)){
                     if(rayDepth > 0){
                         Lo += getFinalColor(scene, bvh, reflection, features, rayDepth - 1);
                     }
@@ -31,8 +30,14 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         }else{
             drawRay(ray, glm::vec3(1.0f));
         }
-        // TO REMOVE: test a ray towards the first light source (assumes it's a point light source)
-        Lo *= testVisibilityLightSample(std::get<0>(scene.lights.front()).position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
+        
+        //Lo *= testVisibilityLightSample(std::get<0>(scene.lights.front()).position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
+        for(const auto& light : scene.lights){
+            if (std::holds_alternative<PointLight>(light)) {
+                    const PointLight pointLight = std::get<PointLight>(light);
+                    Lo *= testVisibilityLightSample(pointLight.position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
+            } 
+        }
 
         // Set the color of the pixel to white if the ray hits.
         return Lo;

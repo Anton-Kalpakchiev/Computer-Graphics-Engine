@@ -175,6 +175,9 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
 // file you like, including bounding_volume_hierarchy.h.
 bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Features& features) const
 {
+    std::variant<Triangle, Sphere> var;
+    bool hit = false;
+
     // If BVH is not enabled, use the naive implementation.
     if (!features.enableAccelStructure) {
         bool hit = false;
@@ -208,7 +211,6 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         stack.push(nodes[root]);
 
         float closest = std::numeric_limits<float>::max();
-        std::variant<Triangle, Sphere> var;
 
         while(!stack.empty()){
 
@@ -221,30 +223,28 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
                 size_t beg = parent.data[2];
                 size_t end = parent.data[3];
-                while(beg < end){
-                    const Primitive& p = primitives[beg];
-                    if(p.p.index() == 0){
-                        const auto& t = std::get<Triangle>(p.p);
-                        if(intersectRayWithTriangle(vertices[t.vertexIdx.x].position, vertices[t.vertexIdx.y].position, vertices[t.vertexIdx.z].position, ray, hitInfo)){
-                            if(ray.t < closest){
-                                closest = ray.t;
-                                var = std::get<Triangle>(p.p);
-                            }
+                for(auto it = primitives.begin() + beg; it != primitives.begin() + end; it++){
+                    std::visit(make_visitor(
+                        [&](const Triangle& t) {
+                            if(intersectRayWithTriangle(vertices[t.vertexIdx.x].position, vertices[t.vertexIdx.y].position, vertices[t.vertexIdx.z].position, ray, hitInfo)){
+                                if(ray.t < closest){
+                                    closest = ray.t;
+                                    var = std::get<Triangle>(it->p);
+                                }
                             ray.t = rollBack;
+                            }
+                        },
+                        [&](const Sphere& s) {
+                            if(intersectRayWithShape(s, ray, hitInfo)){
+                                if(ray.t < closest){
+                                    closest = ray.t;
+                                    var = std::get<Sphere>(it->p);
+                                }
+                            ray.t = rollBack;
+                            } 
                         }
-                    }else{
-                        const auto& s = std::get<Sphere>(p.p);
-                        if(intersectRayWithShape(s, ray, hitInfo)){
-                            if(ray.t < closest){
-                                closest = ray.t;
-                                var = std::get<Sphere>(p.p);
-                            }
-                            ray.t = rollBack;
-                        }   
-                    }
-                    beg++;
+                    ), it->p);
                 }
-
             }else{
 
                 Node left = nodes[parent.data[4]];

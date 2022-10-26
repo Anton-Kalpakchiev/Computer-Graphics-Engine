@@ -32,11 +32,15 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         }
         
         //Lo *= testVisibilityLightSample(std::get<0>(scene.lights.front()).position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
+        float hardShadowAverage = 0.0f;
         for(const auto& light : scene.lights){
             if (std::holds_alternative<PointLight>(light)) {
-                    const PointLight pointLight = std::get<PointLight>(light);
-                    Lo *= testVisibilityLightSample(pointLight.position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
+                    const PointLight& pointLight = std::get<PointLight>(light);
+                    hardShadowAverage += testVisibilityLightSample(pointLight.position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
             } 
+        }
+        if(scene.lights.size() > 0){
+            Lo *= (hardShadowAverage / scene.lights.size());
         }
 
         // Set the color of the pixel to white if the ray hits.

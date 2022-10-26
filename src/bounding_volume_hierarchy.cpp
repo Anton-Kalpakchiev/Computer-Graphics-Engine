@@ -177,10 +177,10 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 {
     std::variant<Triangle, Sphere> var;
     bool hit = false;
+    float originalT = ray.t;
 
     // If BVH is not enabled, use the naive implementation.
     if (!features.enableAccelStructure) {
-        bool hit = false;
         // Intersect with all triangles of all meshes.
         for (const auto& mesh : m_pScene->meshes) {
             for (const auto& tri : mesh.triangles) {
@@ -205,7 +205,6 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // TODO: implement here the bounding volume hierarchy traversal.
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
-        bool hit = false;
 
         auto stack = std::stack<Node>();
         stack.push(nodes[root]);

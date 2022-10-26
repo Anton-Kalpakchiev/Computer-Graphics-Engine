@@ -31,7 +31,6 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             drawRay(ray, glm::vec3(1.0f));
         }
         
-        //Lo *= testVisibilityLightSample(std::get<0>(scene.lights.front()).position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
         float hardShadowAverage = 0.0f;
         for(const auto& light : scene.lights){
             if (std::holds_alternative<PointLight>(light)) {

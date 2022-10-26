@@ -48,6 +48,7 @@ float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& deb
         drawRay(toLight, glm::vec3(1.f, 0.f, 0.f));
         return 0.f;
     } else {
+        toLight.t = len;
         drawRay(toLight, glm::vec3(1.f));
         return 1.f;
     }

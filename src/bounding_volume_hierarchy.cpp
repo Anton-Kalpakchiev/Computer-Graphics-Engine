@@ -246,7 +246,17 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
     if (!prim.has_value()) return false;
 
     auto p = prim.value();
-    hitInfo.material = *p.mat;
+    hitInfo.material = std::visit(make_visitor(
+        [&](const TrianglePrim& t) {
+            auto v1 = t.v2->position - t.v1->position;
+            auto v2 = t.v3->position - t.v1->position;
+            return glm::normalize(glm::cross(v1, v2));
+        },
+        [&](const SpherePrim& s) {
+            auto p = ray.origin + ray.direction * ray.t;
+            return glm::normalize(p - *s.c);
+        }
+    ), p.p);
 
     hitInfo.normal = std::visit(
         make_visitor(

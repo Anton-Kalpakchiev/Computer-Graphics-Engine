@@ -246,7 +246,13 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
     if (!prim.has_value()) return false;
 
     auto p = prim.value();
-    hitInfo.material = *p.mat;
+    if(!features.enableTextureMapping){
+        hitInfo.material = *p.mat;
+    }else{
+        if(*p.mat->kdTexture){
+            
+        }
+    }
 
     hitInfo.normal = std::visit(
         make_visitor(

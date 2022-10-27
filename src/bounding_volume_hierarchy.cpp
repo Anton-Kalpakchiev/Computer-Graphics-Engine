@@ -231,23 +231,14 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
                 ray.t = std::numeric_limits<float>::max();
                 bool leftBox = intersectRayWithShape(left.aabb, ray);
-                float leftT = ray.t;
 
                 ray.t = std::numeric_limits<float>::max();
                 bool rightBox = intersectRayWithShape(right.aabb, ray);
-                float rightT = ray.t;
 
                 ray.t = rollBack;
                 
-                // make left always have smaller t
-                if (leftBox && rightBox && leftT > rightT) {
-                    std::swap(left, right);
-                    std::swap(leftBox, rightBox);
-                }
-                
-                // first consider right, because it potentially has higher t
-                if (rightBox) stack.push(right);
                 if (leftBox) stack.push(left);
+                if (rightBox) stack.push(right);
             }
         }
     }

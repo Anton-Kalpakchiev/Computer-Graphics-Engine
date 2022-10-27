@@ -82,7 +82,7 @@ size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t splitBy
     return nodes.size() - 1;
 }
 
-BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
+BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& features)
     : m_pScene(pScene)
 {
     

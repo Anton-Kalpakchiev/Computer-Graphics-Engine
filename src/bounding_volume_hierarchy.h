@@ -60,7 +60,6 @@ public:
     // is on the correct side of the origin (the new t >= 0).
     bool intersect(Ray& ray, HitInfo& hitInfo, const Features& features) const;
 
-
 private:
     int m_numLevels;
     int m_numLeaves;
@@ -68,6 +67,7 @@ private:
     std::vector<Primitive> primitives;
     std::vector<Node> nodes;
     size_t root;
+    std::function<size_t(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth)> splitFunc;
 
-    size_t createBVH(size_t beg, size_t end, size_t splitBy, size_t depth);
+    size_t createBVH(size_t beg, size_t end, size_t depth);
 };

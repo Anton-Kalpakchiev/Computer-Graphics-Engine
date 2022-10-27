@@ -16,6 +16,22 @@
 #include <stack>
 #include <iostream>
 
+size_t splitStandard(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth) {
+    auto byX = [](const auto& a, const auto& b) { return a.center.x < b.center.x; };
+    auto byY = [](const auto& a, const auto& b) { return a.center.y < b.center.y; };
+    auto byZ = [](const auto& a, const auto& b) { return a.center.z < b.center.z; };
+    const std::function<bool(const Primitive&, const Primitive&)> comparators[] = {byX, byY, byZ};
+
+    size_t mid = beg + (end - beg) / 2;
+    std::nth_element(prims.begin() + beg, prims.begin() + mid, prims.begin() + end, comparators[depth % 3]);
+    return mid;
+}
+
+size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth) {
+
+    return beg + (end - beg) / 2;
+}
+
 glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
     return a + b + c / 3.f;
 }
@@ -60,7 +76,7 @@ std::optional<AxisAlignedBox> getBoundingBox(std::span<Primitive> primitives, si
     return res;
 }
 
-size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t splitBy, size_t depth) {
+size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t depth) {
     m_numLevels = std::max(m_numLevels, (int)depth + 1);
     auto aabb = getBoundingBox(primitives, beg, end).value();
     if (depth + 1 == MAX_DEPTH || beg + 1 == end) {
@@ -68,16 +84,9 @@ size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t splitBy
         m_numLeaves++;
         return nodes.size() - 1;
     }
-    auto byX = [](const auto& a, const auto& b) { return a.center.x < b.center.x; };
-    auto byY = [](const auto& a, const auto& b) { return a.center.y < b.center.y; };
-    auto byZ = [](const auto& a, const auto& b) { return a.center.z < b.center.z; };
-    const std::function<bool(const Primitive&, const Primitive&)> comparators[] = {byX, byY, byZ};
-
-    size_t mid = beg + (end - beg) / 2;
-    std::nth_element(primitives.begin() + beg, primitives.begin() + mid, primitives.begin() + end, comparators[splitBy]);
-
-    auto left = createBVH(beg, mid, (splitBy + 1) % 3, depth + 1);
-    auto right = createBVH(mid, end, (splitBy + 1) % 3, depth + 1);
+    auto mid = splitFunc(primitives, beg, end, depth);
+    auto left = createBVH(beg, mid, depth + 1);
+    auto right = createBVH(mid, end, depth + 1);
     nodes.push_back(Node {aabb, { false, depth, beg, end, left, right } });
     return nodes.size() - 1;
 }
@@ -106,9 +115,15 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
     m_numLeaves = 0;
     m_numLevels = 0;
 
+    if (features.extra.enableBvhSahBinning) {
+        splitFunc = splitSAHBinning;
+    } else {
+        splitFunc = splitStandard;
+    }
+
     // We have all the primitives and their centers in the primitves vector
     // Create the BVH itself
-    root = createBVH(0, primitives.size(), 0, 0);
+    root = createBVH(0, primitives.size(), 0);
 }
 
 // Return the depth of the tree that you constructed. This is used to tell the

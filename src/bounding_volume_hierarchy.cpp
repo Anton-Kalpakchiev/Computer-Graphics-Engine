@@ -17,14 +17,14 @@
 #include <iostream>
 
 size_t splitStandard(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth) {
-    auto byX = [](const auto& a, const auto& b) { return a.center.x < b.center.x; };
-    auto byY = [](const auto& a, const auto& b) { return a.center.y < b.center.y; };
-    auto byZ = [](const auto& a, const auto& b) { return a.center.z < b.center.z; };
-    const std::function<bool(const Primitive&, const Primitive&)> comparators[] = {byX, byY, byZ};
 
     size_t mid = beg + (end - beg) / 2;
     std::nth_element(prims.begin() + beg, prims.begin() + mid, prims.begin() + end, comparators[depth % 3]);
     return mid;
+}
+
+size_t calculateSplitCost(std::vector<Primitive>& prims, size_t beg, size_t end) {
+
 }
 
 size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth) {

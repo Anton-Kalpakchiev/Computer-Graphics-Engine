@@ -4,6 +4,7 @@
 #include <framework/ray.h>
 #include <vector>
 #include <variant>
+#include <functional>
 
 // Forward declaration.
 struct Scene;
@@ -36,7 +37,13 @@ struct Node {
     std::vector<size_t> data;
 };
 
-const size_t MAX_DEPTH = 16;
+const size_t MAX_DEPTH = 8;
+
+const std::array<std::function<bool(const Primitive&, const Primitive&)>, 3> comparators = {
+    [](const auto& a, const auto& b) { return a.center.x < b.center.x; },
+    [](const auto& a, const auto& b) { return a.center.y < b.center.y; },
+    [](const auto& a, const auto& b) { return a.center.z < b.center.z; },
+};
 
 class BoundingVolumeHierarchy {
 public:
@@ -67,7 +74,9 @@ private:
     std::vector<Primitive> primitives;
     std::vector<Node> nodes;
     size_t root;
+
     std::function<size_t(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth)> splitFunc;
 
     size_t createBVH(size_t beg, size_t end, size_t depth);
+
 };

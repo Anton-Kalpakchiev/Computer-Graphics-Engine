@@ -41,14 +41,12 @@ float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& deb
     // add an offset to the ray to prevent self intersections
     auto p = ray.origin + ray.direction * (ray.t - .001f);
 
-    float len = glm::length(samplePos - p);
-    Ray toLight = Ray {p, glm::normalize(samplePos - p), std::numeric_limits<float>::max()};
+    Ray toLight = Ray {p, samplePos - p, 1.f};
     bool hit = bvh.intersect(toLight, hitInfo, features);
-    if (hit && toLight.t < len) {
+    if (hit) {
         drawRay(toLight, glm::vec3(1.f, 0.f, 0.f));
         return 0.f;
     } else {
-        toLight.t = len;
         drawRay(toLight, glm::vec3(1.f));
         return 1.f;
     }

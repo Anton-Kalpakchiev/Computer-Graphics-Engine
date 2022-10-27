@@ -7,15 +7,20 @@
 
 // Forward declaration.
 struct Scene;
-struct Triangle {
-    glm::uvec3 vertexIdx;
-    
-    // The index of the mesh int the meshes vector in the scene, useful to retrieve the material
-    size_t meshIdx;
+struct TrianglePrim {
+    Vertex* v1;
+    Vertex* v2;
+    Vertex* v3;
+};
+
+struct SpherePrim {
+    glm::vec3* c;
+    float r;
 };
 
 struct Primitive {
-    std::variant<Triangle, Sphere> p;
+    std::variant<TrianglePrim, SpherePrim> p;
+    Material* mat;
     glm::vec3 center;
 };
 
@@ -31,7 +36,7 @@ struct Node {
     std::vector<size_t> data;
 };
 
-const size_t MAX_DEPTH = 8;
+const size_t MAX_DEPTH = 16;
 
 class BoundingVolumeHierarchy {
 public:
@@ -60,7 +65,6 @@ private:
     int m_numLevels;
     int m_numLeaves;
     Scene* m_pScene;
-    std::vector<Vertex> vertices;
     std::vector<Primitive> primitives;
     std::vector<Node> nodes;
     size_t root;

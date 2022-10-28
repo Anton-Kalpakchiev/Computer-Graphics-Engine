@@ -37,7 +37,8 @@ struct Node {
     std::vector<size_t> data;
 };
 
-const size_t MAX_DEPTH = 8;
+const size_t MAX_DEPTH = 16;
+const size_t NUM_OF_BINS = 8;
 
 const std::array<std::function<bool(const Primitive&, const Primitive&)>, 3> comparators = {
     [](const auto& a, const auto& b) { return a.center.x < b.center.x; },

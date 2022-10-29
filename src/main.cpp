@@ -168,6 +168,10 @@ int main(int argc, char** argv)
 
             ImGui::Spacing();
             ImGui::Separator();
+            if (ImGui::Button("Regenerate BVH with current settings")) {
+                bvh = BvhInterface(&scene, config.features);
+                continue;
+            }
             if (ImGui::Button("Render to file")) {
                 // Show a file picker.
                 nfdchar_t* pOutPath = nullptr;

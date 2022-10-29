@@ -56,7 +56,7 @@ std::optional<AxisAlignedBox> getBoundingBox(std::vector<Primitive>::const_itera
 }
 
 
-float boundingBoxSurfaceArea(const AxisAlignedBox& box) {
+inline float boundingBoxSurfaceArea(const AxisAlignedBox& box) {
     auto lengths = box.upper - box.lower;
     return 2 * (lengths.x * lengths.y + lengths.y * lengths.z + lengths.z * lengths.x);
 }
@@ -101,7 +101,7 @@ size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, si
     return bestSplit;
 }
 
-glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
+inline glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
     return a + b + c / 3.f;
 }
 
@@ -305,5 +305,5 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         }
         ), p.p);
 
-    return prim.has_value();
+    return true;
 }

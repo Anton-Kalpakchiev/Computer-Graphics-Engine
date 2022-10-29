@@ -76,6 +76,7 @@ private:
     std::vector<Node> nodes;
     size_t root;
 
+    // this function should split the triangles in the given range, returns the split index
     std::function<size_t(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth)> splitFunc;
 
     size_t createBVH(size_t beg, size_t end, size_t depth);

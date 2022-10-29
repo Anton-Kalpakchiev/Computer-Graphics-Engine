@@ -1,4 +1,5 @@
 #include "texture.h"
+#include <cmath>
 #include <framework/image.h>
 #include <cmath>
 

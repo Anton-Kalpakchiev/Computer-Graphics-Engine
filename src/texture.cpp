@@ -12,61 +12,13 @@ glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Feat
     if(!features.enableTextureMapping){
         return image.pixels[0];
     }
-    int width = image.width - 1;
-    int height = image.height - 1;
-    float i = width * texCoord.x + 0.5;
-    float j = height * texCoord.y + 0.5;
 
-    float floor_X = floor(i);
-    float diff_X = i - floor(i);
-    
-    float min_X = 0.0f;
-    float max_X = 0.0f;
-    if(diff_X > 0.5f){
-        min_X = floor_X + 0.5;
-        max_X = ceil(i) + 0.5;
-    }else{
-        min_X = floor_X - 0.5;
-        max_X = floor_X + 0.5;
-    }
+    int i = std::max(texCoord.x * image.width, 0.0f);
+    int j = std::max((1.0f - texCoord.y) * image.height, 0.0f);
 
-    if(max_X > width + 0.5){
-        max_X = width + 0.5;
-    }
+    i = std::min(i, image.width - 1);
+    j = std::min(j, image.height - 1);
 
-    float floor_Y = floor(j);
-    float diff_Y = j - floor(j);
-    
-    float min_Y = 0.0f;
-    float max_Y = 0.0f;
-    if(diff_Y > 0.5f){
-        min_Y = floor_Y + 0.5;
-        max_Y = ceil(j) + 0.5;
-    }else{
-        min_Y = floor_Y - 0.5;
-        max_Y = floor_Y + 0.5;
-    }
-
-    if(max_Y > height + 0.5){
-        max_Y = height + 0.5;
-    }
-
-    if(fabs(i - min_X) < fabs(max_X - i) && fabs(j - min_Y) < fabs(max_Y - j)){
-        int pixel_X = int(min_X - 0.5);
-        int pixel_Y = int(min_Y - 0.5);
-        return image.pixels[pixel_Y * width + pixel_X];
-    }else if(fabs(i - min_X) < fabs(max_X - i) && fabs(j - min_Y) > fabs(max_Y - j)){
-        int pixel_X = int(min_X - 0.5);
-        int pixel_Y = int(max_Y - 0.5);
-        return image.pixels[pixel_Y * width + pixel_X];
-    }else if(fabs(i - min_X) > fabs(max_X - i) && fabs(j - min_Y) < fabs(max_Y - j)){
-        int pixel_X = int(max_X - 0.5);
-        int pixel_Y = int(min_Y - 0.5);
-        return image.pixels[pixel_Y * width + pixel_X];
-    }
-
-    int pixel_X = int(max_X - 0.5);
-    int pixel_Y = int(max_Y - 0.5);
-    return image.pixels[pixel_Y * width + pixel_X];
+    return image.pixels[std::floor(j) * image.width + std::floor(i)];
 
 }

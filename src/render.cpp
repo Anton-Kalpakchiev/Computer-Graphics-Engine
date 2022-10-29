@@ -39,7 +39,11 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             } 
         }
         if(scene.lights.size() > 0){
-            Lo *= (hardShadowAverage / scene.lights.size());
+            if(hardShadowAverage > 0.0f){
+                Lo *= 1.0f;
+            }else{
+                Lo *= 0.0f;
+            }
         }
 
         // Set the color of the pixel to white if the ray hits.

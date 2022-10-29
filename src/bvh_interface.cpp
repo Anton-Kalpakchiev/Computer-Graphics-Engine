@@ -23,6 +23,11 @@ int BvhInterface::numLeaves() const
 }
 
 
+void BvhInterface::setRecursionLevel(int level) const{
+    m_impl->setRecursionLevel(level);
+}
+
+
 // Use this function to visualize your BVH. This is useful for debugging. Use the functions in
 // draw.h to draw the various shapes. We have extended the AABB draw functions to support wireframe
 // mode, arbitrary colors and transparency.

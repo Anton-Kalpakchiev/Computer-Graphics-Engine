@@ -6,6 +6,7 @@ DISABLE_WARNINGS_PUSH()
 #include <glm/geometric.hpp>
 DISABLE_WARNINGS_POP()
 #include <cmath>
+#include <iostream>
 #include <fmt/printf.h>
 
 
@@ -39,7 +40,8 @@ float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& deb
     
     // add an offset to the ray to prevent self intersections
     auto p = ray.origin + ray.direction * (ray.t - .001f);
-    Ray toLight = Ray {p, samplePos - p, 1.f };
+
+    Ray toLight = Ray {p, samplePos - p, 1.f};
     bool hit = bvh.intersect(toLight, hitInfo, features);
     if (hit) {
         drawRay(toLight, glm::vec3(1.f, 0.f, 0.f));

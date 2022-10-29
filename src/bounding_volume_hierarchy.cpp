@@ -246,7 +246,6 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
     if (!prim.has_value()) return false;
 
     auto p = prim.value();
-    hitInfo.material = *p.mat;
 
     hitInfo.normal = std::visit(
         make_visitor(
@@ -260,6 +259,21 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
             return glm::normalize(p - *s.c);
         }
         ), p.p);
+
+
+    if(!features.enableTextureMapping){
+        hitInfo.material = *p.mat;
+    }else{
+        hitInfo.material.kd = std::visit(make_visitor(
+        [&](const TrianglePrim& t) {
+            const auto& texCoord = interpolateTexCoord(t.v1->texCoord, t.v2->texCoord, t.v3->texCoord, computeBarycentricCoord(t.v1->position, t.v2->position, t.v3->position, ray.t * ray.direction + ray.origin));
+            return acquireTexel(*p.mat->kdTexture.get(), texCoord, features);
+        },
+        [&](const SpherePrim& s) {
+            return (*p.mat).kd;
+        }    
+        ), p.p);
+    }
 
     return prim.has_value();
 }

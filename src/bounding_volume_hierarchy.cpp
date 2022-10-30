@@ -142,6 +142,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
     m_numLeaves = 0;
     m_numLevels = 0;
     m_recursionLevel = 0;
+    RECURSION_LEVEL = -1;
 
     if (features.extra.enableBvhSahBinning) {
         splitFunc = splitSAHBinning;
@@ -168,8 +169,12 @@ int BoundingVolumeHierarchy::numLeaves() const
     return m_numLeaves;
 }
 
-void BoundingVolumeHierarchy::setRecursionLevel(int level){
-    m_recursionLevel = level;
+void BoundingVolumeHierarchy::setRecursionLevel(int level, bool debug){
+    if(!debug){
+        m_recursionLevel = level;
+    }else{
+        RECURSION_LEVEL = level;
+    }
 }
 
 // Use this function to visualize your BVH. This is useful for debugging. Use the functions in
@@ -327,7 +332,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         ), p.p);
 
 
-    if(!features.enableTextureMapping){
+    if(!features.enableTextureMapping || !(p.mat->kdTexture)){
         hitInfo.material = *p.mat;
     }else{
         hitInfo.material.kd = std::visit(make_visitor(

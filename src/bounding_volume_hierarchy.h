@@ -64,7 +64,7 @@ public:
     void debugDrawLeaf(int leafIdx);
 
     // Set recursion level
-    void setRecursionLevel(int level);
+    void setRecursionLevel(int level, bool debug);
 
     // Return true if something is hit, returns false otherwise.
     // Only find hits if they are closer than t stored in the ray and the intersection
@@ -72,6 +72,7 @@ public:
     bool intersect(Ray& ray, HitInfo& hitInfo, const Features& features) const;
 
     int m_recursionLevel;
+    int RECURSION_LEVEL;
 
 
 private:

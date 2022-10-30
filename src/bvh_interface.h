@@ -33,6 +33,8 @@ public:
     // Set recursion level
     void setRecursionLevel(int level) const;
 
+    // Set debug recursion level
+    void setDebugRecursionLevel(int level) const;
 
     // Return true if something is hit, returns false otherwise.
     // Only find hits if they are closer than t stored in the ray and the intersection

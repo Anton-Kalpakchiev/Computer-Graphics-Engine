@@ -4,6 +4,7 @@
 #include <framework/ray.h>
 #include <vector>
 #include <variant>
+#include <functional>
 
 // Forward declaration.
 struct Scene;
@@ -37,12 +38,18 @@ struct Node {
 };
 
 const size_t MAX_DEPTH = 16;
-const int RECURSION_LEVEL = 0;
+const size_t NUM_OF_BINS = 8;
+
+const std::array<std::function<bool(const Primitive&, const Primitive&)>, 3> comparators = {
+    [](const auto& a, const auto& b) { return a.center.x < b.center.x; },
+    [](const auto& a, const auto& b) { return a.center.y < b.center.y; },
+    [](const auto& a, const auto& b) { return a.center.z < b.center.z; },
+};
 
 class BoundingVolumeHierarchy {
 public:
     // Constructor. Receives the scene and builds the bounding volume hierarchy.
-    BoundingVolumeHierarchy(Scene* pScene);
+    BoundingVolumeHierarchy(Scene* pScene, const Features& features);
 
     // Return how many levels there are in the tree that you have constructed.
     [[nodiscard]] int numLevels() const;
@@ -75,5 +82,9 @@ private:
     std::vector<Node> nodes;
     size_t root;
 
-    size_t createBVH(size_t beg, size_t end, size_t splitBy, size_t depth);
+    // this function should split the triangles in the given range, returns the split index
+    std::function<size_t(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth)> splitFunc;
+
+    size_t createBVH(size_t beg, size_t end, size_t depth);
+
 };

@@ -3,9 +3,9 @@
 
 //! DON'T TOUCH THIS FILE!
 
-BvhInterface::BvhInterface(Scene* pScene)
+BvhInterface::BvhInterface(Scene* pScene, const Features& features)
 {
-    m_impl = new BoundingVolumeHierarchy(pScene);
+    m_impl = new BoundingVolumeHierarchy(pScene, features);
 }
 
 // Return the depth of the tree that you constructed. This is used to tell the

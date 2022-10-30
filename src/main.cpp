@@ -65,7 +65,7 @@ int main(int argc, char** argv)
         SceneType sceneType { SceneType::SingleTriangle };
         std::optional<Ray> optDebugRay;
         Scene scene = loadScenePrebuilt(sceneType, config.dataPath);
-        BvhInterface bvh { &scene };
+        BvhInterface bvh { &scene, config.features };
 
         int bvhDebugLevel = 0;
         int bvhDebugLeaf = 0;
@@ -118,7 +118,7 @@ int main(int argc, char** argv)
                     optDebugRay.reset();
                     scene = loadScenePrebuilt(sceneType, config.dataPath);
                     selectedLightIdx = scene.lights.empty() ? -1 : 0;
-                    bvh = BvhInterface(&scene);
+                    bvh = BvhInterface(&scene, config.features);
                     if (optDebugRay) {
                         HitInfo dummy {};
                         bvh.intersect(*optDebugRay, dummy, config.features);
@@ -168,6 +168,10 @@ int main(int argc, char** argv)
 
             ImGui::Spacing();
             ImGui::Separator();
+            if (ImGui::Button("Regenerate BVH with current settings")) {
+                bvh = BvhInterface(&scene, config.features);
+                continue;
+            }
             if (ImGui::Button("Render to file")) {
                 // Show a file picker.
                 nfdchar_t* pOutPath = nullptr;
@@ -387,7 +391,7 @@ int main(int argc, char** argv)
                        }),
             config.scene);
 
-        BvhInterface bvh { &scene };
+        BvhInterface bvh { &scene, config.features };
 
         using clock = std::chrono::high_resolution_clock;
         // Create output directory if it does not exist.

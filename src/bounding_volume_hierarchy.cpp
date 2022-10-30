@@ -14,16 +14,11 @@
 #include <variant>
 #include <optional>
 #include <stack>
-#include <iostream>
 
-glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
-    return a + b + c / 3.f;
-}
-
-std::optional<AxisAlignedBox> getBoundingBox(std::span<Primitive> primitives, size_t beg, size_t end) {
+std::optional<AxisAlignedBox> getBoundingBox(std::vector<Primitive>::const_iterator beg, std::vector<Primitive>::const_iterator end) {
     std::optional<AxisAlignedBox> res;
     
-    for (auto it = primitives.begin() + beg; it != primitives.begin() + end; it++) {
+    for (; beg != end; beg++) {
         float xMin, xMax, yMin, yMax, zMin, zMax;
 
         std::visit(make_visitor(
@@ -46,7 +41,7 @@ std::optional<AxisAlignedBox> getBoundingBox(std::span<Primitive> primitives, si
                 zMin = s.c->z - s.r;
                 zMax = s.c->z + s.r;
             }
-        ), it->p);
+        ), beg->p);
 
         auto v = res.value_or(AxisAlignedBox { glm::vec3(xMin, yMin, zMin), glm::vec3(xMax, yMax, zMax) });
         v.lower.x = std::min(v.lower.x, xMin);
@@ -60,29 +55,72 @@ std::optional<AxisAlignedBox> getBoundingBox(std::span<Primitive> primitives, si
     return res;
 }
 
-size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t splitBy, size_t depth) {
+
+inline float boundingBoxSurfaceArea(const AxisAlignedBox& box) {
+    auto lengths = box.upper - box.lower;
+    return 2 * (lengths.x * lengths.y + lengths.y * lengths.z + lengths.z * lengths.x);
+}
+
+size_t splitStandard(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth) {
+
+    size_t mid = beg + (end - beg) / 2;
+    std::nth_element(prims.begin() + beg, prims.begin() + mid, prims.begin() + end, comparators[depth % 3]);
+    return mid;
+}
+
+float calculateSplitCost(std::vector<Primitive>& prims, size_t beg, size_t end, size_t split) {
+    auto boxLeft = getBoundingBox(prims.begin() + beg, prims.begin() + split).value_or(AxisAlignedBox { glm::vec3(0.f), glm::vec3(0.f)});
+    auto boxRight = getBoundingBox(prims.begin() + split, prims.begin() + end).value_or(AxisAlignedBox { glm::vec3(0.f), glm::vec3(0.f)});
+
+    auto areaLeft = boundingBoxSurfaceArea(boxLeft);
+    auto areaRight = boundingBoxSurfaceArea(boxRight);
+    
+    return areaLeft * (split - beg) + areaRight * (end - split);
+}
+
+size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth) {
+    size_t skip = std::max(1UL, (end - beg) / NUM_OF_BINS);
+
+    size_t bestSplit;
+    size_t bestAxis;
+    float bestCost = std::numeric_limits<float>::max();
+    for (size_t axis = 0; axis < 3; axis++) {
+        std::sort(prims.begin() + beg, prims.begin() + end, comparators[axis]);
+        for (size_t split = beg + skip; split < end; split += skip) {
+            auto cost = calculateSplitCost(prims, beg, end, split);
+            if (cost < bestCost) {
+                bestSplit = split;
+                bestAxis = axis;
+                bestCost = cost;
+            }
+        }
+    }
+
+    std::sort(prims.begin() + beg, prims.begin() + end, comparators[bestAxis]);
+
+    return bestSplit;
+}
+
+inline glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
+    return a + b + c / 3.f;
+}
+
+size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t depth) {
     m_numLevels = std::max(m_numLevels, (int)depth + 1);
-    auto aabb = getBoundingBox(primitives, beg, end).value();
+    auto aabb = getBoundingBox(primitives.begin() + beg, primitives.begin() + end).value();
     if (depth + 1 == MAX_DEPTH || beg + 1 == end) {
         nodes.push_back(Node { aabb, { true, depth, beg, end } });
         m_numLeaves++;
         return nodes.size() - 1;
     }
-    auto byX = [](const auto& a, const auto& b) { return a.center.x < b.center.x; };
-    auto byY = [](const auto& a, const auto& b) { return a.center.y < b.center.y; };
-    auto byZ = [](const auto& a, const auto& b) { return a.center.z < b.center.z; };
-    const std::function<bool(const Primitive&, const Primitive&)> comparators[] = {byX, byY, byZ};
-
-    size_t mid = beg + (end - beg) / 2;
-    std::nth_element(primitives.begin() + beg, primitives.begin() + mid, primitives.begin() + end, comparators[splitBy]);
-
-    auto left = createBVH(beg, mid, (splitBy + 1) % 3, depth + 1);
-    auto right = createBVH(mid, end, (splitBy + 1) % 3, depth + 1);
+    auto mid = splitFunc(primitives, beg, end, depth);
+    auto left = createBVH(beg, mid, depth + 1);
+    auto right = createBVH(mid, end, depth + 1);
     nodes.push_back(Node {aabb, { false, depth, beg, end, left, right } });
     return nodes.size() - 1;
 }
 
-BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
+BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& features)
     : m_pScene(pScene)
 {
 
@@ -105,9 +143,15 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     m_numLevels = 0;
     m_recursionLevel = 0;
 
+    if (features.extra.enableBvhSahBinning) {
+        splitFunc = splitSAHBinning;
+    } else {
+        splitFunc = splitStandard;
+    }
+
     // We have all the primitives and their centers in the primitves vector
     // Create the BVH itself
-    root = createBVH(0, primitives.size(), 0, 0);
+    root = createBVH(0, primitives.size(), 0);
 }
 
 // Return the depth of the tree that you constructed. This is used to tell the
@@ -263,7 +307,6 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
     if (!prim.has_value()) return false;
 
     auto p = prim.value();
-    hitInfo.material = *p.mat;
 
     hitInfo.normal = std::visit(
         make_visitor(
@@ -283,5 +326,20 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         }
         ), p.p);
 
-    return prim.has_value();
+
+    if(!features.enableTextureMapping){
+        hitInfo.material = *p.mat;
+    }else{
+        hitInfo.material.kd = std::visit(make_visitor(
+        [&](const TrianglePrim& t) {
+            const auto& texCoord = interpolateTexCoord(t.v1->texCoord, t.v2->texCoord, t.v3->texCoord, computeBarycentricCoord(t.v1->position, t.v2->position, t.v3->position, ray.t * ray.direction + ray.origin));
+            return acquireTexel(*p.mat->kdTexture.get(), texCoord, features);
+        },
+        [&](const SpherePrim& s) {
+            return (*p.mat).kd;
+        }    
+        ), p.p);
+    }
+
+    return true;
 }

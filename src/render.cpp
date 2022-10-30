@@ -3,10 +3,14 @@
 #include "light.h"
 #include "screen.h"
 #include <iostream>
+#include <fmt/printf.h>
+#include <random>
 #include <framework/trackball.h>
 #ifdef NDEBUG
 #include <omp.h>
 #endif
+
+int raysPerPixel = 1;
 
 glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth)
 {
@@ -59,19 +63,38 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInterface& bvh, Screen& screen, const Features& features)
 {
     glm::ivec2 windowResolution = screen.resolution();
+    std::default_random_engine gen;
     // Enable multi threading in Release mode
 #ifdef NDEBUG
 #pragma omp parallel for schedule(guided)
 #endif
     for (int y = 0; y < windowResolution.y; y++) {
         for (int x = 0; x != windowResolution.x; x++) {
-            // NOTE: (-1, -1) at the bottom left of the screen, (+1, +1) at the top right of the screen.
+
+            glm::vec3 finalColor;
             const glm::vec2 normalizedPixelPos {
                 float(x) / float(windowResolution.x) * 2.0f - 1.0f,
                 float(y) / float(windowResolution.y) * 2.0f - 1.0f
             };
-            const Ray cameraRay = camera.generateRay(normalizedPixelPos);
-            screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features, 5));
+
+            if (!features.extra.enableMultipleRaysPerPixel) {
+                const Ray cameraRay = camera.generateRay(normalizedPixelPos);
+                finalColor = getFinalColor(scene, bvh, cameraRay, features, 5);
+            } else {
+                const float xOffset = 1 / float(windowResolution.x) * 2.f;
+                const float yOffset = 1 / float(windowResolution.y) * 2.f;
+                std::uniform_real_distribution<float> xDistr(0.f, xOffset);
+                std::uniform_real_distribution<float> yDistr(0.f, yOffset);
+
+                auto colorSum = glm::vec3(0.f);
+                for (size_t i = 0; i < raysPerPixel; i++) {
+                    const auto newNormalizePixelPos = normalizedPixelPos + glm::vec2(xDistr(gen), yDistr(gen));
+                    const auto cameraRay = camera.generateRay(newNormalizePixelPos);
+                    colorSum += getFinalColor(scene, bvh, cameraRay, features, 5);
+                }
+                finalColor = colorSum / float(raysPerPixel);
+            }
+            screen.setPixel(x, y, finalColor);
         }
     }
 }

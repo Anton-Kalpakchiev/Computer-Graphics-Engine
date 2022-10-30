@@ -148,12 +148,20 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Bloom effect", &config.features.extra.enableBloomEffect);
                 ImGui::Checkbox("Texture filtering(bilinear interpolation)", &config.features.extra.enableBilinearTextureFiltering);
                 ImGui::Checkbox("Texture filtering(mipmapping)", &config.features.extra.enableMipmapTextureFiltering);
+                ImGui::Checkbox("Sample multiple rays per pixel", &config.features.extra.enableMultipleRaysPerPixel);
                 ImGui::Checkbox("Glossy reflections", &config.features.extra.enableGlossyReflection);
                 ImGui::Checkbox("Transparency", &config.features.extra.enableTransparency);
                 ImGui::Checkbox("Depth of field", &config.features.extra.enableDepthOfField);
             }
-            ImGui::Separator();
 
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Text("Options");
+            if (config.features.extra.enableMultipleRaysPerPixel) {
+                ImGui::SliderInt("Ray samples per pixel", &raysPerPixel, 1, 32);
+            }
+
+            ImGui::Separator();
             if (ImGui::TreeNode("Camera(read only)")) {
                 auto lookAt = camera.lookAt();
                 auto position = camera.position();
@@ -165,6 +173,7 @@ int main(int argc, char** argv)
                 ImGui::InputFloat3("Rotation", glm::value_ptr(rotation), "%0.2f", ImGuiInputTextFlags_ReadOnly);
                 ImGui::TreePop();
             }
+            ImGui::Separator();
 
             ImGui::Spacing();
             ImGui::Separator();

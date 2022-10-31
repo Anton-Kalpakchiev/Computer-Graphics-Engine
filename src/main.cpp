@@ -205,8 +205,11 @@ int main(int argc, char** argv)
                 if (debugBVHLeaf)
                     ImGui::SliderInt("BVH Leaf", &bvhDebugLeaf, 1, bvh.numLeaves());
                 ImGui::Checkbox("Draw BVH Traversal Recursion Level", &debugBVHTraversal);
-                if (debugBVHTraversal)
+                if (debugBVHTraversal){
                     ImGui::SliderInt("BVH Traversal Recursion Level", &bvhRecursionLevel, 0, 5);
+                }else{
+                    bvh.setDebugRecursionLevel(-1);
+                }
             }
 
             ImGui::Spacing();

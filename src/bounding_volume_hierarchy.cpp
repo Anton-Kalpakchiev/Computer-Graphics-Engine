@@ -123,8 +123,6 @@ size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t depth) 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& features)
     : m_pScene(pScene)
 {
-    
-    m_numLevels = 0;
 
     // Get all triangles of the scene into the BVH
     for (auto& mesh : pScene->meshes) {
@@ -143,6 +141,8 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
 
     m_numLeaves = 0;
     m_numLevels = 0;
+    m_recursionLevel = 0;
+    RECURSION_LEVEL = -1;
 
     if (features.extra.enableBvhSahBinning) {
         splitFunc = splitSAHBinning;
@@ -167,6 +167,14 @@ int BoundingVolumeHierarchy::numLevels() const
 int BoundingVolumeHierarchy::numLeaves() const
 {
     return m_numLeaves;
+}
+
+void BoundingVolumeHierarchy::setRecursionLevel(int level, bool debug){
+    if(!debug){
+        m_recursionLevel = level;
+    }else{
+        RECURSION_LEVEL = level;
+    }
 }
 
 // Use this function to visualize your BVH. This is useful for debugging. Use the functions in
@@ -238,7 +246,6 @@ std::optional<Primitive> getIntersecting(auto beg, auto end, Ray& ray, HitInfo& 
 bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Features& features) const
 {
     std::optional<Primitive> prim;
-
     // If BVH is not enabled, use the naive implementation.
     if (!features.enableAccelStructure) {
         
@@ -275,14 +282,29 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
                 ray.t = std::numeric_limits<float>::max();
                 bool leftBox = intersectRayWithShape(left.aabb, ray);
+                if(leftBox){
+                    if(m_recursionLevel == RECURSION_LEVEL){
+                        drawAABB(left.aabb, DrawMode::Wireframe, glm::vec3(0.9f));
+                    }
+                }
 
                 ray.t = std::numeric_limits<float>::max();
                 bool rightBox = intersectRayWithShape(right.aabb, ray);
+                if(rightBox){
+                    if(m_recursionLevel == RECURSION_LEVEL){
+                        drawAABB(right.aabb, DrawMode::Wireframe, glm::vec3(0.9f));
+                    }
+                }
 
                 ray.t = rollBack;
                 
                 if (leftBox) stack.push(left);
                 if (rightBox) stack.push(right);
+                if(!leftBox && !rightBox){
+                    if(m_recursionLevel == RECURSION_LEVEL){
+                        drawAABB(parent.aabb, DrawMode::Wireframe, {0.9f, 0.0f, 0.0f});
+                    }
+                }
             }
         }
     }
@@ -294,6 +316,11 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
     hitInfo.normal = std::visit(
         make_visitor(
         [&](const TrianglePrim& t) {
+
+            if(m_recursionLevel == RECURSION_LEVEL && features.enableAccelStructure){
+                drawTriangle(*t.v1, *t.v2, *t.v3);
+            }
+
             auto v1 = t.v2->position - t.v1->position;
             auto v2 = t.v3->position - t.v1->position;
             return glm::normalize(glm::cross(v1, v2));
@@ -305,7 +332,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         ), p.p);
 
 
-    if(!features.enableTextureMapping){
+    if(!features.enableTextureMapping || !(p.mat->kdTexture)){
         hitInfo.material = *p.mat;
     }else{
         hitInfo.material.kd = std::visit(make_visitor(

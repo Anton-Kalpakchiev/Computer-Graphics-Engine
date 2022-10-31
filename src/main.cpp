@@ -69,8 +69,10 @@ int main(int argc, char** argv)
 
         int bvhDebugLevel = 0;
         int bvhDebugLeaf = 0;
+        int bvhRecursionLevel = 0;
         bool debugBVHLevel { false };
         bool debugBVHLeaf { false };
+        bool debugBVHTraversal {false};
         ViewMode viewMode { ViewMode::Rasterization };
 
         window.registerKeyCallback([&](int key, int /* scancode */, int action, int /* mods */) {
@@ -202,6 +204,12 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Draw BVH Leaf", &debugBVHLeaf);
                 if (debugBVHLeaf)
                     ImGui::SliderInt("BVH Leaf", &bvhDebugLeaf, 1, bvh.numLeaves());
+                ImGui::Checkbox("Draw BVH Traversal Recursion Level", &debugBVHTraversal);
+                if (debugBVHTraversal){
+                    ImGui::SliderInt("BVH Traversal Recursion Level", &bvhRecursionLevel, 0, 5);
+                }else{
+                    bvh.setDebugRecursionLevel(-1);
+                }
             }
 
             ImGui::Spacing();
@@ -335,7 +343,7 @@ int main(int argc, char** argv)
 
                 drawLightsOpenGL(scene, camera, selectedLightIdx);
 
-                if (debugBVHLevel || debugBVHLeaf) {
+                if (debugBVHLevel || debugBVHLeaf || debugBVHTraversal) {
                     glPushAttrib(GL_ALL_ATTRIB_BITS);
                     setOpenGLMatrices(camera);
                     glDisable(GL_LIGHTING);
@@ -350,6 +358,9 @@ int main(int argc, char** argv)
                         bvh.debugDrawLevel(bvhDebugLevel);
                     if (debugBVHLeaf)
                         bvh.debugDrawLeaf(bvhDebugLeaf);
+                    if(debugBVHTraversal){
+                        bvh.setDebugRecursionLevel(bvhRecursionLevel);
+                    }
                     enableDebugDraw = false;
                     glPopAttrib();
                 }

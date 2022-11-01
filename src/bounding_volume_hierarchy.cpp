@@ -83,12 +83,24 @@ float calculateSplitCost(std::vector<Primitive>& prims, size_t beg, size_t end, 
     return areaLeft * (split - beg) + areaRight * (end - split);
 }
 
+AxisAlignedBox getSplitPlane(glm::vec3 splitPoint, const AxisAlignedBox& container, size_t axis) {
+    auto [low, high] = container;
+    low[axis] = splitPoint[axis];
+    high[axis] = splitPoint[axis];
+    return AxisAlignedBox(low, high);
+}
+
 size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene* scene, std::vector<SAHCuts>& debugCuts) {
 
     size_t skip = std::max(1UL, (unsigned long) (end - beg) / (unsigned long) (NUM_OF_BINS));
+
+    auto parentBox = getBoundingBox(prims.begin() + beg, prims.begin() + end, scene).value_or(AxisAlignedBox(glm::vec3(0), glm::vec3(0)));
     size_t bestSplit;
     size_t bestAxis;
     float bestCost = std::numeric_limits<float>::max();
+
+    auto cuts = SAHCuts{};
+
     for (size_t axis = 0; axis < 3; axis++) {
         std::sort(prims.begin() + beg, prims.begin() + end, comparators[axis]);
         for (size_t split = beg + skip; split < end; split += skip) {

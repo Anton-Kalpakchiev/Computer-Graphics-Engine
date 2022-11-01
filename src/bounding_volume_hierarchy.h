@@ -24,8 +24,8 @@ struct Primitive {
 
 struct SAHCuts {
     std::array<std::vector<AxisAlignedBox>, 3> cuts;
-    size_t chosen_dim;
-    size_t chosen_ind;
+    size_t chosenDim;
+    size_t chosenInd;
 };
 
 struct Node {

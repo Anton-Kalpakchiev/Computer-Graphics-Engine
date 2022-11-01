@@ -81,7 +81,7 @@ float calculateSplitCost(std::vector<Primitive>& prims, size_t beg, size_t end, 
 }
 
 size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene* scene) {
-    size_t skip = std::max(1UL, (end - beg) / NUM_OF_BINS);
+    size_t skip = std::max(1UL, (unsigned long) (end - beg) / (unsigned long) (NUM_OF_BINS));
 
     size_t bestSplit;
     size_t bestAxis;
@@ -330,13 +330,29 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
             const auto& v2 = m_pScene->meshes[t.meshIdx].vertices[t.v2];
             const auto& v3 = m_pScene->meshes[t.meshIdx].vertices[t.v3];
 
-            if(m_recursionLevel == RECURSION_LEVEL && features.enableAccelStructure){
+            if (m_recursionLevel == RECURSION_LEVEL && features.enableAccelStructure){
                 drawTriangle(v1, v2, v3);
             }
 
-            auto u1 = v2.position - v1.position;
-            auto u2 = v3.position - v1.position;
-            return glm::normalize(glm::cross(u1, u2));
+            if (features.enableNormalInterp) {
+                glm::vec3 barCoords = computeBarycentricCoord(v1.position, v2.position, v3.position, ray.origin + ray.direction * ray.t);
+                glm::vec3 interpolatedNormal = interpolateNormal(v1.normal, v2.normal, v3.normal, barCoords);
+                if (glm::dot(interpolatedNormal, ray.direction) > 0) {
+                    interpolatedNormal.x = -interpolatedNormal.x;
+                    interpolatedNormal.y = -interpolatedNormal.y;
+                    interpolatedNormal.z = -interpolatedNormal.z;
+                }
+                Ray toDraw = Ray(ray.origin + ray.direction * ray.t, interpolatedNormal, 1);
+                drawRay(toDraw);
+                drawRay(Ray(v1.position, v1.normal, 1));
+                drawRay(Ray(v2.position, v2.normal, 1));
+                drawRay(Ray(v3.position, v3.normal, 1));
+                return interpolatedNormal;
+            } else {
+                auto u1 = v2.position - v1.position;
+                auto u2 = v3.position - v1.position;
+                return glm::normalize(glm::cross(u1, u2));
+            }
         },
         [&](const SpherePrim& s) {
             auto p = ray.origin + ray.direction * ray.t;

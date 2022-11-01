@@ -56,7 +56,7 @@ void drawTriangle(const Vertex& v0, const Vertex& v1, const Vertex& v2 ) {
     glEnd();
 }
 
-void drawTriangleDebug(const Vertex& v0, const Vertex& v1, const Vertex& v2 ) {
+void debugDrawTriangle(const Vertex& v0, const Vertex& v1, const Vertex& v2 ) {
     if (!enableDebugDraw) return;
     drawTriangle(v0, v1, v2);
 }
@@ -96,7 +96,7 @@ void drawSphere(const Sphere& sphere)
     glPopAttrib();
 }
 
-void drawSphereDebug(const Sphere& sphere) {
+void debugDrawSphere(const Sphere& sphere) {
     if (!enableDebugDraw) return;
     drawSphere(sphere);
 }

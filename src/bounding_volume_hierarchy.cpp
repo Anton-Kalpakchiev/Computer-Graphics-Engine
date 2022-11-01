@@ -214,10 +214,10 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
                         const auto& v1 = m_pScene->meshes[t.meshIdx].vertices[t.v1];
                         const auto& v2 = m_pScene->meshes[t.meshIdx].vertices[t.v2];
                         const auto& v3 = m_pScene->meshes[t.meshIdx].vertices[t.v3];
-                        drawTriangle(v1, v2, v3);
+                        debugDrawTriangle(v1, v2, v3);
                     },
                     [&](const SpherePrim& s) {
-                        drawSphere(m_pScene->spheres[s.sphereIdx]);
+                        debugDrawSphere(m_pScene->spheres[s.sphereIdx]);
                     }
                 ), p.p);
             }
@@ -331,7 +331,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
             const auto& v3 = m_pScene->meshes[t.meshIdx].vertices[t.v3];
 
             if (m_recursionLevel == RECURSION_LEVEL && features.enableAccelStructure){
-                drawTriangle(v1, v2, v3);
+                debugDrawTriangle(v1, v2, v3);
             }
 
             if (features.enableNormalInterp) {

@@ -21,9 +21,11 @@ void drawRay(const Ray& ray, const glm::vec3& color = glm::vec3(1.0f));
 
 void drawAABB(const AxisAlignedBox& box, DrawMode drawMode = DrawMode::Filled, const glm::vec3& color = glm::vec3(1.0f), float transparency = 1.0f);
 
+void debugDrawTriangle (const Vertex& v0, const Vertex& v1, const Vertex& v2 );
 void drawTriangle (const Vertex& v0, const Vertex& v1, const Vertex& v2 );
 void drawMesh(const Mesh& mesh);
 void drawSphere(const Sphere& sphere);
+void debugDrawSphere(const Sphere& sphere);
 void drawSphere(const glm::vec3& center, float radius, const glm::vec3& color = glm::vec3(1.0f));
 void setColor(const glm::vec3& color);
 void drawScene(const Scene& scene);

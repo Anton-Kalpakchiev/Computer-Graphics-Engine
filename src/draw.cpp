@@ -45,7 +45,7 @@ void drawExampleOfCustomVisualDebug()
 }
 
 
-void drawTriangle (const Vertex& v0, const Vertex& v1, const Vertex& v2 ) {
+void drawTriangle(const Vertex& v0, const Vertex& v1, const Vertex& v2 ) {
     glBegin(GL_TRIANGLES);
         glNormal3fv(glm::value_ptr(v0.normal));
         glVertex3fv(glm::value_ptr(v0.position));
@@ -54,6 +54,11 @@ void drawTriangle (const Vertex& v0, const Vertex& v1, const Vertex& v2 ) {
         glNormal3fv(glm::value_ptr(v2.normal));
         glVertex3fv(glm::value_ptr(v2.position));
     glEnd();
+}
+
+void drawTriangleDebug(const Vertex& v0, const Vertex& v1, const Vertex& v2 ) {
+    if (!enableDebugDraw) return;
+    drawTriangle(v0, v1, v2);
 }
 
 void drawMesh(const Mesh& mesh)
@@ -89,6 +94,11 @@ void drawSphere(const Sphere& sphere)
     setMaterial(sphere.material);
     drawSphereInternal(sphere.center, sphere.radius);
     glPopAttrib();
+}
+
+void drawSphereDebug(const Sphere& sphere) {
+    if (!enableDebugDraw) return;
+    drawSphere(sphere);
 }
 
 void drawSphere(const glm::vec3& center, float radius, const glm::vec3& color /*= glm::vec3(1.0f)*/)

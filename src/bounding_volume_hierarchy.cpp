@@ -79,7 +79,7 @@ float calculateSplitCost(std::vector<Primitive>& prims, size_t beg, size_t end, 
 }
 
 size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth) {
-    size_t skip = std::max(1UL, (end - beg) / NUM_OF_BINS);
+    size_t skip = std::max(1UL, (unsigned long) (end - beg) / (unsigned long) (NUM_OF_BINS));
 
     size_t bestSplit;
     size_t bestAxis;
@@ -321,9 +321,25 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 drawTriangle(*t.v1, *t.v2, *t.v3);
             }
 
-            auto v1 = t.v2->position - t.v1->position;
-            auto v2 = t.v3->position - t.v1->position;
-            return glm::normalize(glm::cross(v1, v2));
+            if (features.enableNormalInterp) {
+                glm::vec3 barCoords = computeBarycentricCoord(t.v1->position, t.v2->position, t.v3->position, ray.origin + ray.direction * ray.t);
+                glm::vec3 interpolatedNormal = interpolateNormal(t.v1->normal, t.v2->normal, t.v3->normal, barCoords);
+                if (glm::dot(interpolatedNormal, ray.direction) > 0) {
+                    interpolatedNormal.x = -interpolatedNormal.x;
+                    interpolatedNormal.y = -interpolatedNormal.y;
+                    interpolatedNormal.z = -interpolatedNormal.z;
+                }
+                Ray toDraw = Ray(ray.origin + ray.direction * ray.t, interpolatedNormal, 1);
+                drawRay(toDraw);
+                drawRay(Ray(t.v1->position, t.v1->normal, 1));
+                drawRay(Ray(t.v2->position, t.v2->normal, 1));
+                drawRay(Ray(t.v3->position, t.v3->normal, 1));
+                return interpolatedNormal;
+            } else {
+                auto v1 = t.v2->position - t.v1->position;
+                auto v2 = t.v3->position - t.v1->position;
+                return glm::normalize(glm::cross(v1, v2));
+            }
         },
         [&](const SpherePrim& s) {
             auto p = ray.origin + ray.direction * ray.t;

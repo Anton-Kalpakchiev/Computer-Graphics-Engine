@@ -69,6 +69,8 @@ public:
     // Set recursion level
     void setRecursionLevel(int level, bool debug);
 
+    void debugDrawSAHSplits(int level, int axis);
+
     // Return true if something is hit, returns false otherwise.
     // Only find hits if they are closer than t stored in the ray and the intersection
     // is on the correct side of the origin (the new t >= 0).
@@ -89,7 +91,9 @@ private:
     std::vector<std::vector<SAHCuts>> sahCutsPerLevel;
 
     // this function should split the triangles in the given range, returns the split index
-    std::function<size_t(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene* scene)> splitFunc;
+    std::function<
+        size_t(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene* scene, std::vector<SAHCuts>& debugCuts)
+        > splitFunc;
 
     size_t createBVH(size_t beg, size_t end, size_t depth);
 

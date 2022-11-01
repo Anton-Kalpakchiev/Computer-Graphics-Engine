@@ -70,9 +70,13 @@ int main(int argc, char** argv)
         int bvhDebugLevel = 0;
         int bvhDebugLeaf = 0;
         int bvhRecursionLevel = 0;
+        int sahAxis = 0;
+        
         bool debugBVHLevel { false };
         bool debugBVHLeaf { false };
         bool debugBVHTraversal {false};
+        bool drawSAHSplits { false };
+
         ViewMode viewMode { ViewMode::Rasterization };
 
         window.registerKeyCallback([&](int key, int /* scancode */, int action, int /* mods */) {
@@ -199,8 +203,14 @@ int main(int argc, char** argv)
             ImGui::Text("Debugging");
             if (viewMode == ViewMode::Rasterization) {
                 ImGui::Checkbox("Draw BVH Level", &debugBVHLevel);
-                if (debugBVHLevel)
+                if (debugBVHLevel) {
                     ImGui::SliderInt("BVH Level", &bvhDebugLevel, 0, bvh.numLevels() - 1);
+                    if (config.features.extra.enableBvhSahBinning) {
+                        ImGui::Checkbox("Draw SAH splits per BVH level", &drawSAHSplits);
+                        if (drawSAHSplits)
+                            ImGui::SliderInt("Split axis", &sahAxis, 0, 2);
+                    }
+                }
                 ImGui::Checkbox("Draw BVH Leaf", &debugBVHLeaf);
                 if (debugBVHLeaf)
                     ImGui::SliderInt("BVH Leaf", &bvhDebugLeaf, 1, bvh.numLeaves());
@@ -354,8 +364,12 @@ int main(int argc, char** argv)
                     glEnable(GL_BLEND);
                     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                     enableDebugDraw = true;
-                    if (debugBVHLevel)
+                    if (debugBVHLevel) {
                         bvh.debugDrawLevel(bvhDebugLevel);
+                        if (drawSAHSplits) {
+                            bvh.debugDrawSAHSplits(bvhDebugLevel, sahAxis);
+                        }
+                    }
                     if (debugBVHLeaf)
                         bvh.debugDrawLeaf(bvhDebugLeaf);
                     if(debugBVHTraversal){

@@ -63,8 +63,11 @@ inline float boundingBoxSurfaceArea(const AxisAlignedBox& box) {
     return 2 * (lengths.x * lengths.y + lengths.y * lengths.z + lengths.z * lengths.x);
 }
 
-size_t splitStandard(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene*) {
+inline glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
+    return a + b + c / 3.f;
+}
 
+size_t splitStandard(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene*, std::vector<SAHCuts>&) {
     size_t mid = beg + (end - beg) / 2;
     std::nth_element(prims.begin() + beg, prims.begin() + mid, prims.begin() + end, comparators[depth % 3]);
     return mid;
@@ -80,9 +83,9 @@ float calculateSplitCost(std::vector<Primitive>& prims, size_t beg, size_t end, 
     return areaLeft * (split - beg) + areaRight * (end - split);
 }
 
-size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene* scene) {
-    size_t skip = std::max(1UL, (unsigned long) (end - beg) / (unsigned long) (NUM_OF_BINS));
+size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene* scene, std::vector<SAHCuts>& debugCuts) {
 
+    size_t skip = std::max(1UL, (unsigned long) (end - beg) / (unsigned long) (NUM_OF_BINS));
     size_t bestSplit;
     size_t bestAxis;
     float bestCost = std::numeric_limits<float>::max();
@@ -103,19 +106,18 @@ size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, si
     return bestSplit;
 }
 
-inline glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
-    return a + b + c / 3.f;
-}
-
 size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t depth) {
     m_numLevels = std::max(m_numLevels, (int)depth + 1);
     auto aabb = getBoundingBox(primitives.begin() + beg, primitives.begin() + end, m_pScene).value();
+    if (depth + 1 > sahCutsPerLevel.size()) {
+        sahCutsPerLevel.resize(depth + 1);
+    }
     if (depth + 1 == MAX_DEPTH || beg + 1 == end) {
         nodes.push_back(Node { aabb, { true, depth, beg, end } });
         m_numLeaves++;
         return nodes.size() - 1;
     }
-    auto mid = splitFunc(primitives, beg, end, depth, m_pScene);
+    auto mid = splitFunc(primitives, beg, end, depth, m_pScene, sahCutsPerLevel[depth]);
     auto left = createBVH(beg, mid, depth + 1);
     auto right = createBVH(mid, end, depth + 1);
     nodes.push_back(Node {aabb, { false, depth, beg, end, left, right } });
@@ -191,6 +193,10 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
             drawAABB(node.aabb, DrawMode::Wireframe, glm::vec3(0.9f));
         }
     }
+}
+
+void BoundingVolumeHierarchy::debugDrawSAHSplits(int level, int axis) {
+
 }
 
 

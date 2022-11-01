@@ -22,6 +22,12 @@ struct Primitive {
     glm::vec3 center;
 };
 
+struct SAHCuts {
+    std::array<std::vector<AxisAlignedBox>, 3> cuts;
+    size_t chosen_dim;
+    size_t chosen_ind;
+};
+
 struct Node {
     AxisAlignedBox aabb;
 
@@ -79,6 +85,8 @@ private:
     std::vector<Primitive> primitives;
     std::vector<Node> nodes;
     size_t root;
+
+    std::vector<std::vector<SAHCuts>> sahCutsPerLevel;
 
     // this function should split the triangles in the given range, returns the split index
     std::function<size_t(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene* scene)> splitFunc;

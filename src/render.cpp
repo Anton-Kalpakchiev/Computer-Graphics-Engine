@@ -16,6 +16,21 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
+        float hardShadowAverage = 0.0f;
+        for(const auto& light : scene.lights){
+            if (std::holds_alternative<PointLight>(light)) {
+                    const PointLight& pointLight = std::get<PointLight>(light);
+                    hardShadowAverage += testVisibilityLightSample(pointLight.position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
+            } 
+        }
+        if(scene.lights.size() > 0){
+            if(hardShadowAverage > 0.0f){
+                Lo *= 1.0f;
+            }else{
+                Lo *= 0.0f;
+            }
+        }
+
         if (features.enableRecursive) {
             Ray reflection = computeReflectionRay(ray, hitInfo);
             if(!(reflection.direction == glm::vec3(0.0f) && reflection.origin == glm::vec3(0.0f) && reflection.t == 0.0f)){
@@ -30,21 +45,6 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
             drawRay(ray, Lo);
         }else{
             drawRay(ray, glm::vec3(1.0f));
-        }
-        
-        float hardShadowAverage = 0.0f;
-        for(const auto& light : scene.lights){
-            if (std::holds_alternative<PointLight>(light)) {
-                    const PointLight& pointLight = std::get<PointLight>(light);
-                    hardShadowAverage += testVisibilityLightSample(pointLight.position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
-            } 
-        }
-        if(scene.lights.size() > 0){
-            if(hardShadowAverage > 0.0f){
-                Lo *= 1.0f;
-            }else{
-                Lo *= 0.0f;
-            }
         }
 
         // Set the color of the pixel to white if the ray hits.

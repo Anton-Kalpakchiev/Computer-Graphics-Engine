@@ -9,19 +9,16 @@
 // Forward declaration.
 struct Scene;
 struct TrianglePrim {
-    Vertex* v1;
-    Vertex* v2;
-    Vertex* v3;
+    size_t meshIdx;
+    size_t v1, v2, v3;
 };
 
 struct SpherePrim {
-    glm::vec3* c;
-    float r;
+    size_t sphereIdx;
 };
 
 struct Primitive {
     std::variant<TrianglePrim, SpherePrim> p;
-    Material* mat;
     glm::vec3 center;
 };
 
@@ -84,7 +81,7 @@ private:
     size_t root;
 
     // this function should split the triangles in the given range, returns the split index
-    std::function<size_t(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth)> splitFunc;
+    std::function<size_t(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene* scene)> splitFunc;
 
     size_t createBVH(size_t beg, size_t end, size_t depth);
 

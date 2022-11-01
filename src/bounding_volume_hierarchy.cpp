@@ -15,7 +15,7 @@
 #include <optional>
 #include <stack>
 
-std::optional<AxisAlignedBox> getBoundingBox(std::vector<Primitive>::const_iterator beg, std::vector<Primitive>::const_iterator end) {
+std::optional<AxisAlignedBox> getBoundingBox(std::vector<Primitive>::const_iterator beg, std::vector<Primitive>::const_iterator end, Scene* scene) {
     std::optional<AxisAlignedBox> res;
     
     for (; beg != end; beg++) {
@@ -23,9 +23,10 @@ std::optional<AxisAlignedBox> getBoundingBox(std::vector<Primitive>::const_itera
 
         std::visit(make_visitor(
             [&](const TrianglePrim& t) {
-                const auto& p1 = t.v1->position;
-                const auto& p2 = t.v2->position;
-                const auto& p3 = t.v3->position;
+                const auto& vertices = scene->meshes[t.meshIdx].vertices;
+                const auto& p1 = vertices[t.v1].position;
+                const auto& p2 = vertices[t.v2].position;
+                const auto& p3 = vertices[t.v3].position;
                 xMin = std::min({ p1.x, p2.x, p3.x });
                 xMax = std::max({ p1.x, p2.x, p3.x });
                 yMin = std::min({ p1.y, p2.y, p3.y });
@@ -33,13 +34,14 @@ std::optional<AxisAlignedBox> getBoundingBox(std::vector<Primitive>::const_itera
                 zMin = std::min({ p1.z, p2.z, p3.z });
                 zMax = std::max({ p1.z, p2.z, p3.z });
             },
-            [&](const SpherePrim& s) {
-                xMin = s.c->x - s.r;
-                xMax = s.c->x + s.r;
-                yMin = s.c->y - s.r;
-                yMax = s.c->y + s.r;
-                zMin = s.c->z - s.r;
-                zMax = s.c->z + s.r;
+            [&](const SpherePrim& sp) {
+                const auto& s = scene->spheres[sp.sphereIdx]; 
+                xMin = s.center.x - s.radius;
+                xMax = s.center.x + s.radius;
+                yMin = s.center.y - s.radius;
+                yMax = s.center.y + s.radius;
+                zMin = s.center.z - s.radius;
+                zMax = s.center.z + s.radius;
             }
         ), beg->p);
 
@@ -61,16 +63,16 @@ inline float boundingBoxSurfaceArea(const AxisAlignedBox& box) {
     return 2 * (lengths.x * lengths.y + lengths.y * lengths.z + lengths.z * lengths.x);
 }
 
-size_t splitStandard(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth) {
+size_t splitStandard(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene*) {
 
     size_t mid = beg + (end - beg) / 2;
     std::nth_element(prims.begin() + beg, prims.begin() + mid, prims.begin() + end, comparators[depth % 3]);
     return mid;
 }
 
-float calculateSplitCost(std::vector<Primitive>& prims, size_t beg, size_t end, size_t split) {
-    auto boxLeft = getBoundingBox(prims.begin() + beg, prims.begin() + split).value_or(AxisAlignedBox { glm::vec3(0.f), glm::vec3(0.f)});
-    auto boxRight = getBoundingBox(prims.begin() + split, prims.begin() + end).value_or(AxisAlignedBox { glm::vec3(0.f), glm::vec3(0.f)});
+float calculateSplitCost(std::vector<Primitive>& prims, size_t beg, size_t end, size_t split, Scene* scene) {
+    auto boxLeft = getBoundingBox(prims.begin() + beg, prims.begin() + split, scene).value_or(AxisAlignedBox { glm::vec3(0.f), glm::vec3(0.f)});
+    auto boxRight = getBoundingBox(prims.begin() + split, prims.begin() + end, scene).value_or(AxisAlignedBox { glm::vec3(0.f), glm::vec3(0.f)});
 
     auto areaLeft = boundingBoxSurfaceArea(boxLeft);
     auto areaRight = boundingBoxSurfaceArea(boxRight);
@@ -78,7 +80,7 @@ float calculateSplitCost(std::vector<Primitive>& prims, size_t beg, size_t end, 
     return areaLeft * (split - beg) + areaRight * (end - split);
 }
 
-size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth) {
+size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene* scene) {
     size_t skip = std::max(1UL, (unsigned long) (end - beg) / (unsigned long) (NUM_OF_BINS));
 
     size_t bestSplit;
@@ -87,7 +89,7 @@ size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, si
     for (size_t axis = 0; axis < 3; axis++) {
         std::sort(prims.begin() + beg, prims.begin() + end, comparators[axis]);
         for (size_t split = beg + skip; split < end; split += skip) {
-            auto cost = calculateSplitCost(prims, beg, end, split);
+            auto cost = calculateSplitCost(prims, beg, end, split, scene);
             if (cost < bestCost) {
                 bestSplit = split;
                 bestAxis = axis;
@@ -107,13 +109,13 @@ inline glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const gl
 
 size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t depth) {
     m_numLevels = std::max(m_numLevels, (int)depth + 1);
-    auto aabb = getBoundingBox(primitives.begin() + beg, primitives.begin() + end).value();
+    auto aabb = getBoundingBox(primitives.begin() + beg, primitives.begin() + end, m_pScene).value();
     if (depth + 1 == MAX_DEPTH || beg + 1 == end) {
         nodes.push_back(Node { aabb, { true, depth, beg, end } });
         m_numLeaves++;
         return nodes.size() - 1;
     }
-    auto mid = splitFunc(primitives, beg, end, depth);
+    auto mid = splitFunc(primitives, beg, end, depth, m_pScene);
     auto left = createBVH(beg, mid, depth + 1);
     auto right = createBVH(mid, end, depth + 1);
     nodes.push_back(Node {aabb, { false, depth, beg, end, left, right } });
@@ -125,19 +127,21 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
 {
 
     // Get all triangles of the scene into the BVH
-    for (auto& mesh : pScene->meshes) {
+    for (size_t meshIdx = 0; const auto& mesh : pScene->meshes) {
 
         std::transform(mesh.triangles.begin(), mesh.triangles.end(), std::back_inserter(primitives), [&](const auto& t) {
-            auto p1 = &mesh.vertices[t.x];
-            auto p2 = &mesh.vertices[t.y];
-            auto p3 = &mesh.vertices[t.z];
-            return Primitive { TrianglePrim { p1, p2, p3 }, &mesh.material, triangleCenter(p1->position, p2->position, p3->position) };
+            const auto& p1 = mesh.vertices[t.x];
+            const auto& p2 = mesh.vertices[t.y];
+            const auto& p3 = mesh.vertices[t.z];
+            return Primitive { TrianglePrim { meshIdx, t.x, t.y, t.z }, triangleCenter(p1.position, p2.position, p3.position) };
         });
+        meshIdx++;
     }
     // Get all spheres of the scene into the BVH
-    std::transform(pScene->spheres.begin(), pScene->spheres.end(), std::back_inserter(primitives), [](auto& s) {
-        return Primitive { SpherePrim { &s.center, s.radius }, &s.material, glm::vec3(s.center) };
-    });
+    for (size_t sphereIdx = 0; const auto& s : pScene->spheres) {
+        primitives.push_back(Primitive { SpherePrim { sphereIdx }, glm::vec3(s.center) });
+        sphereIdx++;
+    }
 
     m_numLeaves = 0;
     m_numLevels = 0;
@@ -207,10 +211,13 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
             for (const auto& p : std::ranges::subrange(beg, end)) {
                 std::visit(make_visitor(
                     [&](const TrianglePrim& t) {
-                        drawTriangle(*t.v1, *t.v2, *t.v3);
+                        const auto& v1 = m_pScene->meshes[t.meshIdx].vertices[t.v1];
+                        const auto& v2 = m_pScene->meshes[t.meshIdx].vertices[t.v2];
+                        const auto& v3 = m_pScene->meshes[t.meshIdx].vertices[t.v3];
+                        debugDrawTriangle(v1, v2, v3);
                     },
                     [&](const SpherePrim& s) {
-                        drawSphere(Sphere { *s.c, s.r, *p.mat });
+                        debugDrawSphere(m_pScene->spheres[s.sphereIdx]);
                     }
                 ), p.p);
             }
@@ -219,16 +226,19 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     }
 }
 
-std::optional<Primitive> getIntersecting(auto beg, auto end, Ray& ray, HitInfo& hitInfo) {
+std::optional<Primitive> getIntersecting(auto beg, auto end, Ray& ray, HitInfo& hitInfo, Scene* scene) {
     std::optional<Primitive> res;
     auto range = std::ranges::subrange(beg, end);
     for (const auto& prim : range) {
         auto hit =  std::visit(make_visitor(
             [&](const TrianglePrim& t) {
-                return intersectRayWithTriangle(t.v1->position, t.v2->position, t.v3->position, ray, hitInfo);
+                const auto& v1 = scene->meshes[t.meshIdx].vertices[t.v1];
+                const auto& v2 = scene->meshes[t.meshIdx].vertices[t.v2];
+                const auto& v3 = scene->meshes[t.meshIdx].vertices[t.v3];
+                return intersectRayWithTriangle(v1.position, v2.position, v3.position, ray, hitInfo);
             },
             [&](const SpherePrim& s) {
-                return intersectRayWithShape(Sphere { *s.c, s.r }, ray, hitInfo);
+                return intersectRayWithShape(scene->spheres[s.sphereIdx], ray, hitInfo);
             }
         ), prim.p);
 
@@ -249,7 +259,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
     // If BVH is not enabled, use the naive implementation.
     if (!features.enableAccelStructure) {
         
-        prim = getIntersecting(primitives.begin(), primitives.end(), ray, hitInfo);
+        prim = getIntersecting(primitives.begin(), primitives.end(), ray, hitInfo, m_pScene);
         
     } else {
         // TODO: implement here the bounding volume hierarchy traversal.
@@ -268,7 +278,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
                 size_t beg = parent.data[2];
                 size_t end = parent.data[3];
-                auto maybePrim = getIntersecting(primitives.begin() + beg, primitives.begin() + end, ray, hitInfo);
+                auto maybePrim = getIntersecting(primitives.begin() + beg, primitives.begin() + end, ray, hitInfo, m_pScene);
                 if (maybePrim.has_value()) {
                     prim = maybePrim.value();
                 }
@@ -313,17 +323,20 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
     auto p = prim.value();
 
-    hitInfo.normal = std::visit(
-        make_visitor(
+    hitInfo.normal = std::visit(make_visitor(
         [&](const TrianglePrim& t) {
 
-            if(m_recursionLevel == RECURSION_LEVEL && features.enableAccelStructure){
-                drawTriangle(*t.v1, *t.v2, *t.v3);
+            const auto& v1 = m_pScene->meshes[t.meshIdx].vertices[t.v1];
+            const auto& v2 = m_pScene->meshes[t.meshIdx].vertices[t.v2];
+            const auto& v3 = m_pScene->meshes[t.meshIdx].vertices[t.v3];
+
+            if (m_recursionLevel == RECURSION_LEVEL && features.enableAccelStructure){
+                debugDrawTriangle(v1, v2, v3);
             }
 
             if (features.enableNormalInterp) {
-                glm::vec3 barCoords = computeBarycentricCoord(t.v1->position, t.v2->position, t.v3->position, ray.origin + ray.direction * ray.t);
-                glm::vec3 interpolatedNormal = interpolateNormal(t.v1->normal, t.v2->normal, t.v3->normal, barCoords);
+                glm::vec3 barCoords = computeBarycentricCoord(v1.position, v2.position, v3.position, ray.origin + ray.direction * ray.t);
+                glm::vec3 interpolatedNormal = interpolateNormal(v1.normal, v2.normal, v3.normal, barCoords);
                 if (glm::dot(interpolatedNormal, ray.direction) > 0) {
                     interpolatedNormal.x = -interpolatedNormal.x;
                     interpolatedNormal.y = -interpolatedNormal.y;
@@ -331,36 +344,41 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 }
                 Ray toDraw = Ray(ray.origin + ray.direction * ray.t, interpolatedNormal, 1);
                 drawRay(toDraw);
-                drawRay(Ray(t.v1->position, t.v1->normal, 1));
-                drawRay(Ray(t.v2->position, t.v2->normal, 1));
-                drawRay(Ray(t.v3->position, t.v3->normal, 1));
+                drawRay(Ray(v1.position, v1.normal, 1));
+                drawRay(Ray(v2.position, v2.normal, 1));
+                drawRay(Ray(v3.position, v3.normal, 1));
                 return interpolatedNormal;
             } else {
-                auto v1 = t.v2->position - t.v1->position;
-                auto v2 = t.v3->position - t.v1->position;
-                return glm::normalize(glm::cross(v1, v2));
+                auto u1 = v2.position - v1.position;
+                auto u2 = v3.position - v1.position;
+                return glm::normalize(glm::cross(u1, u2));
             }
         },
         [&](const SpherePrim& s) {
             auto p = ray.origin + ray.direction * ray.t;
-            return glm::normalize(p - *s.c);
+            return glm::normalize(p - m_pScene->spheres[s.sphereIdx].center);
         }
-        ), p.p);
+    ), p.p);
 
 
-    if(!features.enableTextureMapping || !(p.mat->kdTexture)){
-        hitInfo.material = *p.mat;
-    }else{
-        hitInfo.material.kd = std::visit(make_visitor(
+    hitInfo.material = std::visit(make_visitor(
         [&](const TrianglePrim& t) {
-            const auto& texCoord = interpolateTexCoord(t.v1->texCoord, t.v2->texCoord, t.v3->texCoord, computeBarycentricCoord(t.v1->position, t.v2->position, t.v3->position, ray.t * ray.direction + ray.origin));
-            return acquireTexel(*p.mat->kdTexture.get(), texCoord, features);
+            const auto& v1 = m_pScene->meshes[t.meshIdx].vertices[t.v1];
+            const auto& v2 = m_pScene->meshes[t.meshIdx].vertices[t.v2];
+            const auto& v3 = m_pScene->meshes[t.meshIdx].vertices[t.v3];
+            auto material = m_pScene->meshes[t.meshIdx].material;
+            if (!features.enableTextureMapping || !material.kdTexture) {
+                return material;
+            }
+            const auto& texCoord = interpolateTexCoord(v1.texCoord, v2.texCoord, v3.texCoord, 
+                                        computeBarycentricCoord(v1.position, v2.position, v3.position, ray.t * ray.direction + ray.origin));
+            material.kd = acquireTexel(*material.kdTexture.get(), texCoord, features);
+            return material;
         },
         [&](const SpherePrim& s) {
-            return (*p.mat).kd;
+            return m_pScene->spheres[s.sphereIdx].material; 
         }    
-        ), p.p);
-    }
+    ), p.p);
 
     return true;
 }

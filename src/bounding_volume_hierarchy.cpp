@@ -79,7 +79,7 @@ float calculateSplitCost(std::vector<Primitive>& prims, size_t beg, size_t end, 
 }
 
 size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth) {
-    size_t skip = std::max(1UL, unsigned long (end - beg) / unsigned long (NUM_OF_BINS));
+    size_t skip = std::max(1UL, (unsigned long) (end - beg) / (unsigned long) (NUM_OF_BINS));
 
     size_t bestSplit;
     size_t bestAxis;

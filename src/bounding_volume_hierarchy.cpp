@@ -64,7 +64,7 @@ inline float boundingBoxSurfaceArea(const AxisAlignedBox& box) {
 }
 
 inline glm::vec3 triangleCenter(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
-    return a + b + c / 3.f;
+    return (a + b + c) / 3.f;
 }
 
 size_t splitStandard(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene*, std::vector<SAHCuts>&) {
@@ -215,7 +215,7 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
 void BoundingVolumeHierarchy::debugDrawSAHSplits(int level, int axis) {
     for (const auto& [cuts, ax, idx] : sahCutsPerLevel[level]) {
         for (size_t i = 0; const auto& cutPlane : cuts[axis]) {
-            drawAABB(cutPlane, DrawMode::Wireframe, (ax == axis && idx == i) ? glm::vec3(0, 1.f, 0) : glm::vec3(1.f, 0, 0), .7);
+            drawAABB(cutPlane, DrawMode::Filled, (ax == axis && idx == i) ? glm::vec3(0, 1.f, 0) : glm::vec3(1.f, 0, 0), .6);
             i++;
         }
     }

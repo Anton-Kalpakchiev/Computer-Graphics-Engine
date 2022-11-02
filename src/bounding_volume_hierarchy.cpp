@@ -104,7 +104,7 @@ size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, si
     for (size_t axis = 0; axis < 3; axis++) {
         std::sort(prims.begin() + beg, prims.begin() + end, comparators[axis]);
         for (size_t split = beg + skip; split < end; split += skip) {
-            auto splitPlane = getSplitPlane(prims[split].center, parentBox, axis);
+            auto splitPlane = getSplitPlane((prims[split].center + prims[split - 1].center) / 2.f, parentBox, axis);
             cuts.cuts[axis].push_back(splitPlane);
             auto cost = calculateSplitCost(prims, beg, end, split, scene);
             if (cost < bestCost) {
@@ -112,7 +112,7 @@ size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, si
                 bestAxis = axis;
                 bestCost = cost;
                 cuts.chosenDim = axis;
-                cuts.chosenInd = cuts.cuts.size() - 1;
+                cuts.chosenInd = cuts.cuts[axis].size() - 1;
             }
         }
     }

@@ -83,7 +83,7 @@ float calculateSplitCost(std::vector<Primitive>& prims, size_t beg, size_t end, 
     return areaLeft * (split - beg) + areaRight * (end - split);
 }
 
-AxisAlignedBox getSplitPlane(glm::vec3 splitPoint, const AxisAlignedBox& container, size_t axis) {
+inline AxisAlignedBox getSplitPlane(glm::vec3 splitPoint, const AxisAlignedBox& container, size_t axis) {
     auto [low, high] = container;
     low[axis] = splitPoint[axis];
     high[axis] = splitPoint[axis];
@@ -104,14 +104,19 @@ size_t splitSAHBinning(std::vector<Primitive>& prims, size_t beg, size_t end, si
     for (size_t axis = 0; axis < 3; axis++) {
         std::sort(prims.begin() + beg, prims.begin() + end, comparators[axis]);
         for (size_t split = beg + skip; split < end; split += skip) {
+            auto splitPlane = getSplitPlane(prims[split].center, parentBox, axis);
+            cuts.cuts[axis].push_back(splitPlane);
             auto cost = calculateSplitCost(prims, beg, end, split, scene);
             if (cost < bestCost) {
                 bestSplit = split;
                 bestAxis = axis;
                 bestCost = cost;
+                cuts.chosenDim = axis;
+                cuts.chosenInd = cuts.cuts.size() - 1;
             }
         }
     }
+    debugCuts.push_back(cuts);
 
     std::sort(prims.begin() + beg, prims.begin() + end, comparators[bestAxis]);
 
@@ -208,7 +213,12 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
 }
 
 void BoundingVolumeHierarchy::debugDrawSAHSplits(int level, int axis) {
-
+    for (const auto& [cuts, ax, idx] : sahCutsPerLevel[level]) {
+        for (size_t i = 0; const auto& cutPlane : cuts[axis]) {
+            drawAABB(cutPlane, DrawMode::Wireframe, (ax == axis && idx == i) ? glm::vec3(0, 1.f, 0) : glm::vec3(1.f, 0, 0), .7);
+            i++;
+        }
+    }
 }
 
 

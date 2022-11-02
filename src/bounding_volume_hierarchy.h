@@ -9,19 +9,16 @@
 // Forward declaration.
 struct Scene;
 struct TrianglePrim {
-    Vertex* v1;
-    Vertex* v2;
-    Vertex* v3;
+    size_t meshIdx;
+    size_t v1, v2, v3;
 };
 
 struct SpherePrim {
-    glm::vec3* c;
-    float r;
+    size_t sphereIdx;
 };
 
 struct Primitive {
     std::variant<TrianglePrim, SpherePrim> p;
-    Material* mat;
     glm::vec3 center;
 };
 
@@ -63,10 +60,17 @@ public:
     // Visual Debug 2: Draw the triangles of the i-th leaf
     void debugDrawLeaf(int leafIdx);
 
+    // Set recursion level
+    void setRecursionLevel(int level, bool debug);
+
     // Return true if something is hit, returns false otherwise.
     // Only find hits if they are closer than t stored in the ray and the intersection
     // is on the correct side of the origin (the new t >= 0).
     bool intersect(Ray& ray, HitInfo& hitInfo, const Features& features) const;
+
+    int m_recursionLevel;
+    int RECURSION_LEVEL;
+
 
 private:
     int m_numLevels;
@@ -77,7 +81,7 @@ private:
     size_t root;
 
     // this function should split the triangles in the given range, returns the split index
-    std::function<size_t(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth)> splitFunc;
+    std::function<size_t(std::vector<Primitive>& prims, size_t beg, size_t end, size_t depth, Scene* scene)> splitFunc;
 
     size_t createBVH(size_t beg, size_t end, size_t depth);
 

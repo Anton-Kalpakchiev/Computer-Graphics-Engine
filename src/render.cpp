@@ -12,9 +12,9 @@
 
 int raysPerPixel = 1;
 
-glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth)
-{
+glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth, int rayDepthInitial){
     HitInfo hitInfo;
+    bvh.setRecursionLevel(rayDepthInitial - rayDepth);
     if (bvh.intersect(ray, hitInfo, features)) {
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
@@ -23,7 +23,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             Ray reflection = computeReflectionRay(ray, hitInfo);
             if(!(reflection.direction == glm::vec3(0.0f) && reflection.origin == glm::vec3(0.0f) && reflection.t == 0.0f)){
                     if(rayDepth > 0){
-                        Lo += getFinalColor(scene, bvh, reflection, features, rayDepth - 1);
+                        Lo += recursiveRayTrace(scene, bvh, reflection, features, rayDepth - 1, rayDepthInitial);
                     }
             }
         }
@@ -58,6 +58,11 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         // Set the color of the pixel to black if the ray misses.
         return glm::vec3(0.0f);
     }
+}
+
+glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth)
+{
+    return recursiveRayTrace(scene, bvh, ray, features, rayDepth, rayDepth);
 }
 
 void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInterface& bvh, Screen& screen, const Features& features)

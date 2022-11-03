@@ -169,6 +169,11 @@ int main(int argc, char** argv)
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Text("Options");
+            if (config.features.extra.enableBloomEffect) {
+                ImGui::SliderFloat("Bloom Scalar", &bloomScalar, 0.0f, 1.0f);
+                ImGui::SliderFloat("Bloom Threshold", &bloomThreshold, 0.0f, 1.0f);
+                ImGui::SliderInt("Bloom Debug Option", &bloomDebugOption, 0, 2);
+            }
             if (config.features.extra.enableMultipleRaysPerPixel) {
                 ImGui::SliderInt("Ray samples per pixel side", &raysPerPixelSide, 1, 10);
             }
@@ -219,12 +224,6 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Draw BVH Level", &debugBVHLevel);
                 if (debugBVHLevel) {
                     ImGui::SliderInt("BVH Level", &bvhDebugLevel, 0, bvh.numLevels() - 1);
-                }
-
-                if (config.features.extra.enableBloomEffect) {
-                    ImGui::SliderFloat("Bloom Scalar", &bloomScalar, 0.0f, 1.0f);
-                    ImGui::SliderFloat("Bloom Threshold", &bloomThreshold, 0.0f, 1.0f);
-                    ImGui::SliderInt("Bloom Debug Option", &bloomDebugOption, 0, 2);
                 }
                 ImGui::Checkbox("Draw BVH Leaf", &debugBVHLeaf);
                 if (debugBVHLeaf) {

@@ -76,17 +76,22 @@ int main(int argc, char** argv)
         bool debugBVHLevel { false };
         bool debugBVHLeaf { false };
         bool debugBVHTraversal {false};
+        bool debugSampleRays { false };
         bool drawSAHSplits { false };
 
         ViewMode viewMode { ViewMode::Rasterization };
+
+        glm::vec2 cameraPos;
+        std::optional<Trackball> savedCamera;
 
         window.registerKeyCallback([&](int key, int /* scancode */, int action, int /* mods */) {
             if (action == GLFW_PRESS) {
                 switch (key) {
                 case GLFW_KEY_R: {
                     // Shoot a ray. Produce a ray from camera to the far plane.
-                    const auto tmp = window.getNormalizedCursorPos();
-                        optDebugRay = camera.generateRay(tmp * 2.0f - 1.0f);
+                    cameraPos = window.getNormalizedCursorPos();
+                    savedCamera = camera;
+                    optDebugRay = camera.generateRay(cameraPos * 2.0f - 1.0f);
                 } break;
                 case GLFW_KEY_A: {
                     debugBVHLeafId++;
@@ -155,12 +160,20 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Bloom effect", &config.features.extra.enableBloomEffect);
                 ImGui::Checkbox("Texture filtering(bilinear interpolation)", &config.features.extra.enableBilinearTextureFiltering);
                 ImGui::Checkbox("Texture filtering(mipmapping)", &config.features.extra.enableMipmapTextureFiltering);
+                ImGui::Checkbox("Sample multiple rays per pixel", &config.features.extra.enableMultipleRaysPerPixel);
                 ImGui::Checkbox("Glossy reflections", &config.features.extra.enableGlossyReflection);
                 ImGui::Checkbox("Transparency", &config.features.extra.enableTransparency);
                 ImGui::Checkbox("Depth of field", &config.features.extra.enableDepthOfField);
             }
-            ImGui::Separator();
 
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Text("Options");
+            if (config.features.extra.enableMultipleRaysPerPixel) {
+                ImGui::SliderInt("Ray samples per pixel side", &raysPerPixelSide, 1, 10);
+            }
+
+            ImGui::Separator();
             if (ImGui::TreeNode("Camera(read only)")) {
                 auto lookAt = camera.lookAt();
                 auto position = camera.position();
@@ -172,6 +185,7 @@ int main(int argc, char** argv)
                 ImGui::InputFloat3("Rotation", glm::value_ptr(rotation), "%0.2f", ImGuiInputTextFlags_ReadOnly);
                 ImGui::TreePop();
             }
+            ImGui::Separator();
 
             ImGui::Spacing();
             ImGui::Separator();
@@ -224,7 +238,8 @@ int main(int argc, char** argv)
                 }else{
                     bvh.setDebugRecursionLevel(-1);
                 }
-                
+                if (config.features.extra.enableMultipleRaysPerPixel)
+                    ImGui::Checkbox("Ray sampling debug", &debugSampleRays);
             }
 
             ImGui::Spacing();
@@ -351,7 +366,17 @@ int main(int argc, char** argv)
                     enableDebugDraw = true;
                     glDisable(GL_LIGHTING);
                     glDepthFunc(GL_LEQUAL);
-                    (void)getFinalColor(scene, bvh, *optDebugRay, config.features, 5);
+                    if (!debugSampleRays) {
+                        (void)getFinalColor(scene, bvh, *optDebugRay, config.features, 5);
+                    } else {
+                        auto pixelPos = cameraPos * 2.f - 1.f;
+                        auto ws = config.windowSize;
+                        auto pixelSize = glm::vec2(float(ws.x) * 0.00005f, float(ws.y) * 0.00005f);
+                        auto rays = getRaySamples(pixelPos, pixelSize, savedCamera.value(), raysPerPixelSide);
+                        for (const auto& ray : rays) {
+                            (void)getFinalColor(scene, bvh, ray, config.features, 0);
+                        }
+                    }
                     enableDebugDraw = false;
                 }
                 glPopAttrib();

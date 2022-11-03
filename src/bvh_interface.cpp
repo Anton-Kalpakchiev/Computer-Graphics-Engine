@@ -58,3 +58,8 @@ bool BvhInterface::intersect(Ray& ray, HitInfo& hitInfo, const Features& feature
 {
     return m_impl->intersect(ray, hitInfo, features);
 }
+
+// Set mipmap
+void BvhInterface::setMipmap(glm::vec3 right, glm::vec3 up, int width, int height) const{
+    m_impl->setMipmap(right, up, width, height);
+}

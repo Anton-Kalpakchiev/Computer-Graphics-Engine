@@ -9,6 +9,7 @@ DISABLE_WARNINGS_POP()
 #include <exception>
 #include <iostream>
 #include <string>
+#include <algorithm>
 
 Image::Image(const std::filesystem::path& filePath)
 {
@@ -31,5 +32,33 @@ Image::Image(const std::filesystem::path& filePath)
             pixels.emplace_back(stbPixels[i + 0] / 255.0f, stbPixels[i + 1] / 255.0f, stbPixels[i + 2] / 255.0f);
 	}
 
+	int k = int(std::floor((float)log2(pixels.size()) / 2));
+	levels = std::vector<std::vector<glm::vec3> >();
+	levels.push_back(pixels);
+
+	for(int x = 0; x < k; x++){
+
+		int w = (width / pow(2, x));
+		std::vector<glm::vec3> vec = std::vector<glm::vec3>();
+		std::copy(levels[x].begin(), levels[x].end(), std::back_inserter(vec));
+		std::vector<glm::vec3> v = std::vector<glm::vec3>();
+		for(int i = 0; i < w - 1; i += 2){
+			for(int j = 0; j < w - 1; j += 2){
+				glm::vec3 v1 = vec[j * w + i];
+				glm::vec3 v2 = vec[(j + 1) * w + i];
+				glm::vec3 v3 = vec[j * w + (i + 1)];
+				glm::vec v4 = vec[(j+1) * w + (i + 1)];
+				glm::vec3 avg = (v1 + v2 + v3 + v4) / 4.0f;
+				v.push_back(avg);
+			}
+		}
+		levels.push_back(v);
+	}
+
 	stbi_image_free(stbPixels);
+}
+
+
+void Image::setLOD(int lod){
+	this->lod = lod;
 }

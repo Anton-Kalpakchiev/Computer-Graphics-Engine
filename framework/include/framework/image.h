@@ -12,7 +12,11 @@ struct Image {
 public:
     explicit Image(const std::filesystem::path& filePath);
 
+    void setLOD(int lod);
+
 public:
     int width, height;
     std::vector<glm::vec3> pixels;
+    std::vector<std::vector<glm::vec3> > levels;
+    int lod = 0;
 };

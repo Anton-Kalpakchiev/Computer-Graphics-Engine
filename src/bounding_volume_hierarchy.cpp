@@ -14,6 +14,7 @@
 #include <variant>
 #include <optional>
 #include <stack>
+#include <iostream>
 
 std::optional<AxisAlignedBox> getBoundingBox(std::vector<Primitive>::const_iterator beg, std::vector<Primitive>::const_iterator end, Scene* scene) {
     std::optional<AxisAlignedBox> res;
@@ -226,6 +227,14 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     }
 }
 
+// Set mipmap
+void BoundingVolumeHierarchy::setMipmap(glm::vec3 right, glm::vec3 up, int width, int height){
+    this->width = width;
+    this->height = height;
+    this->right = right;
+    this->up = up;
+}
+
 std::optional<Primitive> getIntersecting(auto beg, auto end, Ray& ray, HitInfo& hitInfo, Scene* scene) {
     std::optional<Primitive> res;
     auto range = std::ranges::subrange(beg, end);
@@ -370,6 +379,50 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
             if (!features.enableTextureMapping || !material.kdTexture) {
                 return material;
             }
+
+            float lod = 0.0f;
+
+            if(features.extra.enableMipmapTextureFiltering){
+                glm::vec3 point = ray.t * ray.direction + ray.origin;
+                glm::vec3 d = glm::normalize(ray.direction);
+
+                float val = 1 / sqrt(pow(glm::dot(d, d), 3));
+                glm::vec3 diff_d_poX = val * (glm::dot(d, d) * glm::normalize(right) - glm::dot(d, glm::normalize(right)) * d);
+                glm::vec3 diff_d_poY = val * (glm::dot(d, d) * glm::normalize(up) - glm::dot(d, glm::normalize(up)) * d);
+
+                glm::vec3 q = ray.t * diff_d_poX;
+                glm::vec3 r = ray.t * diff_d_poY;
+
+                glm::vec3 e1 = (v2.position - v1.position);
+                glm::vec3 e2 = (v3.position - v1.position);
+                float k = glm::dot(glm::cross(e1, e2), d);
+
+                float diff_u_poX = glm::dot(glm::cross(e2, d), q) / k;
+                float diff_v_poX = glm::dot(glm::cross(d, e1), q) / k;
+
+                float diff_u_poY = glm::dot(glm::cross(e2, d), r) / k;
+                float diff_v_poY = glm::dot(glm::cross(d, e1), r) / k;
+
+                int w = material.kdTexture.get()->width;
+                int h = material.kdTexture.get()->height;
+
+                glm::vec2 g1 = v2.texCoord - v1.texCoord;
+                glm::vec2 g2 = v3.texCoord - v1.texCoord;
+
+                float diff_s_poX = w * (diff_u_poX * g1.x + diff_v_poX * g2.x);
+                float diff_s_poY = w * (diff_u_poY * g1.x + diff_v_poY * g2.x);
+
+                float diff_t_poX = h * (diff_u_poX * g1.y + diff_v_poX * g2.y);
+                float diff_t_poY = h * (diff_u_poY * g1.y + diff_v_poY * g2.y);
+
+                float p = std::max(sqrt(pow(diff_s_poX, 2) + pow(diff_t_poX, 2)), sqrt(pow(diff_s_poY, 2) + pow(diff_t_poY, 2)));
+                float lambda = log2(std::ceil(p));
+
+                lod = std::floor(std::clamp(lambda - 4.0f, 0.0001f, (float)log2(material.kdTexture.get()->pixels.size()) / 2.0f));
+            }
+
+            material.kdTexture.get()->setLOD(lod);
+
             const auto& texCoord = interpolateTexCoord(v1.texCoord, v2.texCoord, v3.texCoord, 
                                         computeBarycentricCoord(v1.position, v2.position, v3.position, ray.t * ray.direction + ray.origin));
             material.kd = acquireTexel(*material.kdTexture.get(), texCoord, features);

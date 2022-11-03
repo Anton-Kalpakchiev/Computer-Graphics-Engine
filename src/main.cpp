@@ -336,6 +336,7 @@ int main(int argc, char** argv)
                     enableDebugDraw = true;
                     glDisable(GL_LIGHTING);
                     glDepthFunc(GL_LEQUAL);
+                    bvh.setMipmap(camera.left(), camera.up(), window.getFrameBufferSize().x, window.getFrameBufferSize().y);
                     (void)getFinalColor(scene, bvh, *optDebugRay, config.features, 5);
                     enableDebugDraw = false;
                 }

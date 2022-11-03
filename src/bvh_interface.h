@@ -36,6 +36,9 @@ public:
     // Set debug recursion level
     void setDebugRecursionLevel(int level) const;
 
+    // Set mipmap
+    void setMipmap(glm::vec3 right, glm::vec3 up, int width, int height) const;
+
     // Return true if something is hit, returns false otherwise.
     // Only find hits if they are closer than t stored in the ray and the intersection
     // is on the correct side of the origin (the new t >= 0).

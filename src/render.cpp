@@ -77,6 +77,7 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
                 float(y) / float(windowResolution.y) * 2.0f - 1.0f
             };
             const Ray cameraRay = camera.generateRay(normalizedPixelPos);
+            bvh.setMipmap(camera.left(), camera.up(), windowResolution.x, windowResolution.y);
             screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features, 5));
         }
     }

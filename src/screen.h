@@ -13,7 +13,7 @@ public:
 
     void clear(const glm::vec3& color);
     void setPixel(int x, int y, const glm::vec3& color);
-
+    std::vector<glm::vec3> getTextureData();
     void writeBitmapToFile(const std::filesystem::path& filePath);
     void draw();
 

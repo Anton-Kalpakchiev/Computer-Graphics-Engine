@@ -3,11 +3,14 @@
 #include "light.h"
 #include "screen.h"
 #include <iostream>
+#include <fmt/printf.h>
+#include <random>
 #include <framework/trackball.h>
 #ifdef NDEBUG
 #include <omp.h>
 #endif
 
+int raysPerPixelSide = 1;
 
 glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth, int rayDepthInitial){
     HitInfo hitInfo;
@@ -62,6 +65,23 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
     return recursiveRayTrace(scene, bvh, ray, features, rayDepth, rayDepth);
 }
 
+std::vector<Ray> getRaySamples(glm::vec2 pixelPos, glm::vec2 pixelSize, const Trackball& camera, int n) {
+    std::vector<Ray> res;
+
+    glm::vec2 pixelBox = pixelSize / float(n);
+    std::default_random_engine gen(time(NULL));
+    std::uniform_real_distribution<float> xJitter(0.f, pixelBox.x);
+    std::uniform_real_distribution<float> yJitter(0.f, pixelBox.y);
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            glm::vec2 newPos = glm::vec2(pixelPos.x + i * pixelBox.x, pixelPos.y + j * pixelBox.y);
+            Ray r = camera.generateRay(newPos + glm::vec2(xJitter(gen), yJitter(gen)));
+            res.emplace_back(r);
+        }
+    }
+    return res;
+}
+
 void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInterface& bvh, Screen& screen, const Features& features)
 {
     glm::ivec2 windowResolution = screen.resolution();
@@ -71,13 +91,34 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
 #endif
     for (int y = 0; y < windowResolution.y; y++) {
         for (int x = 0; x != windowResolution.x; x++) {
-            // NOTE: (-1, -1) at the bottom left of the screen, (+1, +1) at the top right of the screen.
+
+            auto colorSum = glm::vec3(0.f);
+            size_t raysCast = 0;
+
             const glm::vec2 normalizedPixelPos {
                 float(x) / float(windowResolution.x) * 2.0f - 1.0f,
                 float(y) / float(windowResolution.y) * 2.0f - 1.0f
             };
-            const Ray cameraRay = camera.generateRay(normalizedPixelPos);
-            screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features, 5));
+            const glm::vec2 pixelSize {
+                1 / float(windowResolution.x) * 2.f,
+                1 / float(windowResolution.y) * 2.f
+            };
+
+            if (features.extra.enableMultipleRaysPerPixel) {
+                for (auto& ray : getRaySamples(normalizedPixelPos, pixelSize, camera, raysPerPixelSide)) {
+                    colorSum += getFinalColor(scene, bvh, ray, features, 5);
+                }
+                raysCast += raysPerPixelSide * raysPerPixelSide;
+            }
+
+            if (!features.extra.enableMultipleRaysPerPixel) {
+                const Ray cameraRay = camera.generateRay(normalizedPixelPos);
+                colorSum += getFinalColor(scene, bvh, cameraRay, features, 5);
+                raysCast++;
+            }
+
+            glm::vec3 finalColor = colorSum / float(raysCast);
+            screen.setPixel(x, y, finalColor);
         }
     }
 }

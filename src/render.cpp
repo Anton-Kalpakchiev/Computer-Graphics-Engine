@@ -16,21 +16,6 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
-        /*float hardShadowAverage = 0.0f;
-        for(const auto& light : scene.lights){
-            if (std::holds_alternative<PointLight>(light)) {
-                    const PointLight& pointLight = std::get<PointLight>(light);
-                    hardShadowAverage += testVisibilityLightSample(pointLight.position, glm::vec3 {1.f}, bvh, features, ray, hitInfo);
-            } 
-        }
-        if(scene.lights.size() > 0){
-            if(hardShadowAverage > 0.0f){
-                Lo *= 1.0f;
-            }else{
-                Lo *= 0.0f;
-            }
-        }*/
-
         if (features.enableRecursive) {
             Ray reflection = computeReflectionRay(ray, hitInfo);
             if(!(reflection.direction == glm::vec3(0.0f) && reflection.origin == glm::vec3(0.0f) && reflection.t == 0.0f)){
@@ -77,7 +62,46 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
                 float(y) / float(windowResolution.y) * 2.0f - 1.0f
             };
             const Ray cameraRay = camera.generateRay(normalizedPixelPos);
+
             screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features, 5));
         }
+    }
+    if (features.extra.enableBloomEffect) {
+        std::vector<glm::vec3> screenData = screen.getTextureData();//originalData
+        std::vector<glm::vec3> screenThreshold = screen.getTextureData();
+
+
+
+        for (int i = 0; i < screenThreshold.size(); i++) {//assert threshhold
+            if (screenThreshold[i].x < .4) {
+                screenThreshold[i].x *= screenThreshold[i].x;
+            }
+            if (screenThreshold[i].y < .4) {
+                screenThreshold[i].y *= screenThreshold[i].y;
+            }
+            if (screenThreshold[i].z < .4) {
+                screenThreshold[i].z *= screenThreshold[i].z;
+            }
+        }
+
+        for (int y = 0; y < windowResolution.y - 1; y++) {//compute boxfilter per pixel and add bloom
+            for (int x = 0; x < windowResolution.x - 1; x++) {
+                int idx = screen.indexAt(x, y);
+                glm::vec3 sum;
+                for (int k = -1; k < 2; k++) {
+                    for (int j = -1; j < 2; j++) {
+                        if (!(x + k < 0 || x + k > windowResolution.x - 1 || y + j < 0 || y + j > windowResolution.y - 1)) {
+                            int thisIndex = screen.indexAt(x + k, y + j);
+                            sum += screenThreshold[thisIndex];
+                        }
+                    }
+                }
+                sum = sum / 9.0f;
+                float scalar = .15f;
+                glm::vec3 newColor = screenData[idx] + sum * scalar;
+                screen.setPixel(x, y, newColor);
+            }
+        }
+
     }
 }

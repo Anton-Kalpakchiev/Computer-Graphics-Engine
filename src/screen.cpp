@@ -34,6 +34,10 @@ void Screen::clear(const glm::vec3& color)
     std::fill(std::begin(m_textureData), std::end(m_textureData), color);
 }
 
+std::vector<glm::vec3> Screen::getTextureData() {
+    return m_textureData;
+}
+
 void Screen::setPixel(int x, int y, const glm::vec3& color)
 {
     // In the window/camera class we use (0, 0) at the bottom left corner of the screen (as used by GLFW).

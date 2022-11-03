@@ -16,7 +16,7 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
-        float hardShadowAverage = 0.0f;
+        /*float hardShadowAverage = 0.0f;
         for(const auto& light : scene.lights){
             if (std::holds_alternative<PointLight>(light)) {
                     const PointLight& pointLight = std::get<PointLight>(light);
@@ -29,7 +29,7 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
             }else{
                 Lo *= 0.0f;
             }
-        }
+        }*/
 
         if (features.enableRecursive) {
             Ray reflection = computeReflectionRay(ray, hitInfo);

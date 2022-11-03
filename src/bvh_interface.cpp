@@ -50,6 +50,11 @@ void BvhInterface::debugDrawLeaf(int leafIdx)
     m_impl->debugDrawLeaf(leafIdx);
 }
 
+void BvhInterface::debugDrawSAHSplits(int level, int axis)
+{
+    m_impl->debugDrawSAHSplits(level, axis);
+}
+
 // Return true if something is hit, returns false otherwise. Only find hits if they are closer than t stored
 // in the ray and if the intersection is on the correct side of the origin (the new t >= 0). Replace the code
 // by a bounding volume hierarchy acceleration structure as described in the assignment. You can change any

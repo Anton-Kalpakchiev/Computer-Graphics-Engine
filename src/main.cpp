@@ -201,6 +201,11 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Draw BVH Level", &debugBVHLevel);
                 if (debugBVHLevel)
                     ImGui::SliderInt("BVH Level", &bvhDebugLevel, 0, bvh.numLevels() - 1);
+                if (config.features.extra.enableBloomEffect) {
+                    ImGui::SliderFloat("Bloom Scalar", &bloomScalar, 0.0f, 1.0f);
+                    ImGui::SliderFloat("Bloom Threshold", &bloomThreshold, 0.0f, 1.0f);
+                }
+                    ImGui::SliderInt("BVH Level", &bvhDebugLevel, 0, bvh.numLevels() - 1);
                 ImGui::Checkbox("Draw BVH Leaf", &debugBVHLeaf);
                 if (debugBVHLeaf)
                     ImGui::SliderInt("BVH Leaf", &bvhDebugLeaf, 1, bvh.numLeaves());

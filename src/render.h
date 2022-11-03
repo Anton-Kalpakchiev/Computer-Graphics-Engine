@@ -15,6 +15,8 @@ class BvhInterface;
 struct Features;
 
 extern int raysPerPixelSide;
+extern float focusPlaneDistance;
+extern float blurStrength;
 
 // Main rendering function.
 void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInterface& bvh, Screen& screen, const Features& features);
@@ -22,4 +24,4 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
 // Get the color of a ray.
 glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth = 0);
 
-std::vector<Ray> getRaySamples(glm::vec2 pixelPos, glm::vec2 pixelSize, const Trackball& camera, int n);
+std::vector<Ray> getRaySamples(const glm::vec2& pixelPos, const glm::vec2& pixelSize, const Trackball& camera, int n);

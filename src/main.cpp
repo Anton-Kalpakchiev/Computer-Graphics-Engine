@@ -164,8 +164,12 @@ int main(int argc, char** argv)
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Text("Options");
-            if (config.features.extra.enableMultipleRaysPerPixel) {
+            if (config.features.extra.enableMultipleRaysPerPixel || config.features.extra.enableDepthOfField) {
                 ImGui::SliderInt("Ray samples per pixel side", &raysPerPixelSide, 1, 10);
+            }
+            if (config.features.extra.enableDepthOfField) {
+                ImGui::SliderFloat("Focal length", &focusPlaneDistance, .5f, 5.f);
+                ImGui::SliderFloat("Blur strength", &blurStrength, .01f, 1.f);
             }
 
             ImGui::Separator();

@@ -10,22 +10,34 @@ DISABLE_WARNINGS_POP()
 #include <fmt/printf.h>
 
 
-// samples a segment light source
+// samples a segment light source using jittering
 // you should fill in the vectors position and color with the sampled position and color
-void sampleSegmentLight(const SegmentLight& segmentLight, glm::vec3& position, glm::vec3& color)
+void sampleSegmentLight(const SegmentLight& segmentLight, glm::vec3& position, glm::vec3& color, float index, float sampleSize)//index is from 0 to sampleSize
 {
-    position = glm::vec3(0.0);
-    color = glm::vec3(0.0);
-    // TODO: implement this function.
+    float r = ((float)rand() / RAND_MAX);//random float between 0 and 1
+    float weight = (index + r) / sampleSize;
+
+    position = (segmentLight.endpoint1 - segmentLight.endpoint0) * weight + segmentLight.endpoint0;
+    color = weight * segmentLight.color1 + (1 - weight) * segmentLight.color0;
 }
 
 // samples a parallelogram light source
 // you should fill in the vectors position and color with the sampled position and color
-void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm::vec3& position, glm::vec3& color)
+void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm::vec3& position, glm::vec3& color, float horizontalIndex, float verticalIndex, float sampleSizeA, float sampleSizeB)
 {
-    position = glm::vec3(0.0);
-    color = glm::vec3(0.0);
-    // TODO: implement this function.
+    float horRandom = ((float)rand() / RAND_MAX);
+    float verRandom = ((float)rand() / RAND_MAX);
+
+    float horWeight = (horizontalIndex + horRandom) / sampleSizeA;
+    float verWeight = (verticalIndex + verRandom) / sampleSizeB;
+
+    glm::vec3 horVector = horWeight * parallelogramLight.edge01;
+    glm::vec3 verVector = verWeight * parallelogramLight.edge02;
+    position = parallelogramLight.v0 + horVector + verVector;
+
+    glm::vec3 bottomColor = horWeight * parallelogramLight.color1 + (1 - horWeight) * parallelogramLight.color0;
+    glm::vec3 topColor = horWeight * parallelogramLight.color3 + (1 - horWeight) * parallelogramLight.color2;
+    color = verWeight * topColor + (1 - verWeight) * bottomColor;
 }
 
 // test the visibility at a given light sample
@@ -33,7 +45,7 @@ void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm:
 float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& debugColor, 
                                 const BvhInterface& bvh, const Features& features, Ray ray, HitInfo hitInfo)
 {
-    if (!features.enableHardShadow) return 1.0;
+    if (!features.enableHardShadow && !features.enableSoftShadow) return 1.0;
     // normalize the ray direction, recalculate t
     ray.t *= glm::length(ray.direction);
     ray.direction = glm::normalize(ray.direction);
@@ -47,7 +59,7 @@ float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& deb
         drawRay(toLight, glm::vec3(1.f, 0.f, 0.f));
         return 0.f;
     } else {
-        drawRay(toLight, glm::vec3(1.f));
+        drawRay(toLight, debugColor);
         return 1.f;
     }
 }
@@ -95,19 +107,48 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                  if (std::holds_alternative<PointLight>(light)) {
                      const PointLight pointLight = std::get<PointLight>(light);
                      glm::vec3 color = computeShading(pointLight.position, pointLight.color, features, ray, hitInfo);
-                     result += color;
+                     float visibility = 1.0f;
+                     if (features.enableHardShadow) {
+                         visibility = testVisibilityLightSample(pointLight.position, pointLight.color, bvh, features, ray, hitInfo);
+                     }
+                     result += color * visibility;
                  } else if (std::holds_alternative<SegmentLight>(light)) {
                      const SegmentLight segmentLight = std::get<SegmentLight>(light);
-                     // Perform your calculations for a segment light.
+                     if (features.enableSoftShadow) {
+                         glm::vec3 color = { 0.0f, 0.0f, 0.0f };
+                         float sampleSize = 10;
+                         for (int i = 0; i < sampleSize; i++) {
+                             glm::vec3 colorOfLight = { 0.0f, 0.0f, 0.0f };
+                             glm::vec3 positionOfLight = { 0.0f, 0.0f, 0.0f };
+                             sampleSegmentLight(segmentLight, positionOfLight, colorOfLight, i, sampleSize);
+                             float visibility = testVisibilityLightSample(positionOfLight, colorOfLight, bvh, features, ray, hitInfo);
+                             
+                             glm::vec3 thisColor = computeShading(positionOfLight, colorOfLight, features, ray, hitInfo);
+                             color += thisColor * visibility;
+                         }
+                         result += color / sampleSize;
+                     }
                  } else if (std::holds_alternative<ParallelogramLight>(light)) {
                      const ParallelogramLight parallelogramLight = std::get<ParallelogramLight>(light);
-                     // Perform your calculations for a parallelogram light.
+                     if (features.enableSoftShadow) {
+                         glm::vec3 color = { 0.0f, 0.0f, 0.0f };
+                         float sampleSizeA = 4;
+                         float sampleSizeB = 4;
+                         for (int i = 0; i < sampleSizeA; i++) {
+                             for (int k = 0; k < sampleSizeB; k++) {
+                                 glm::vec3 colorOfLight = { 0.0f, 0.0f, 0.0f };
+                                 glm::vec3 positionOfLight = { 0.0f, 0.0f, 0.0f };
+                                 sampleParallelogramLight(parallelogramLight, positionOfLight, colorOfLight, i, k, sampleSizeA, sampleSizeB);
+                                 float visibility = testVisibilityLightSample(positionOfLight, colorOfLight, bvh, features, ray, hitInfo);
+                                 glm::vec3 thisColor = computeShading(positionOfLight, colorOfLight, features, ray, hitInfo);
+                                 color += thisColor * visibility;
+                             }
+                         }
+                         result += color / (sampleSizeA * sampleSizeB);
+                     }
                  }
              }
-
         return result;
-        // TODO: replace this by your own implementation of shading
-        
 
     } else {
         // If shading is disabled, return the albedo of the material.

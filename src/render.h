@@ -5,6 +5,7 @@ DISABLE_WARNINGS_PUSH()
 #include <glm/vec3.hpp>
 DISABLE_WARNINGS_POP()
 #include <framework/ray.h>
+#include <vector>
 
 extern float bloomScalar;
 extern float bloomThreshold;
@@ -18,6 +19,8 @@ class Trackball;
 class BvhInterface;
 struct Features;
 
+extern int raysPerPixelSide;
+
 // Main rendering function.
 void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInterface& bvh, Screen& screen, const Features& features);
 
@@ -25,3 +28,5 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
 glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth = 0);
 
 glm::mat3 weightsGaussian(float sigma);
+
+std::vector<Ray> getRaySamples(glm::vec2 pixelPos, glm::vec2 pixelSize, const Trackball& camera, int n);

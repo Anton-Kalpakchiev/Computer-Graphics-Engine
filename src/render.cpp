@@ -10,7 +10,7 @@
 #include <omp.h>
 #endif
 
-int raysPerPixel = 1;
+int raysPerPixelSide = 1;
 
 glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth, int rayDepthInitial){
     HitInfo hitInfo;
@@ -65,10 +65,26 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
     return recursiveRayTrace(scene, bvh, ray, features, rayDepth, rayDepth);
 }
 
+std::vector<Ray> getRaySamples(glm::vec2 pixelPos, glm::vec2 pixelSize, const Trackball& camera, int n) {
+    std::vector<Ray> res;
+
+    glm::vec2 pixelBox = pixelSize / float(n);
+    std::default_random_engine gen(time(NULL));
+    std::uniform_real_distribution<float> xJitter(0.f, pixelBox.x);
+    std::uniform_real_distribution<float> yJitter(0.f, pixelBox.y);
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            glm::vec2 newPos = glm::vec2(pixelPos.x + i * pixelBox.x, pixelPos.y + j * pixelBox.y);
+            Ray r = camera.generateRay(newPos + glm::vec2(xJitter(gen), yJitter(gen)));
+            res.emplace_back(r);
+        }
+    }
+    return res;
+}
+
 void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInterface& bvh, Screen& screen, const Features& features)
 {
     glm::ivec2 windowResolution = screen.resolution();
-    std::default_random_engine gen;
     // Enable multi threading in Release mode
 #ifdef NDEBUG
 #pragma omp parallel for schedule(guided)
@@ -76,29 +92,32 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
     for (int y = 0; y < windowResolution.y; y++) {
         for (int x = 0; x != windowResolution.x; x++) {
 
-            glm::vec3 finalColor;
+            auto colorSum = glm::vec3(0.f);
+            size_t raysCast = 0;
+
             const glm::vec2 normalizedPixelPos {
                 float(x) / float(windowResolution.x) * 2.0f - 1.0f,
                 float(y) / float(windowResolution.y) * 2.0f - 1.0f
             };
+            const glm::vec2 pixelSize {
+                1 / float(windowResolution.x) * 2.f,
+                1 / float(windowResolution.y) * 2.f
+            };
+
+            if (features.extra.enableMultipleRaysPerPixel) {
+                for (auto& ray : getRaySamples(normalizedPixelPos, pixelSize, camera, raysPerPixelSide)) {
+                    colorSum += getFinalColor(scene, bvh, ray, features, 5);
+                }
+                raysCast += raysPerPixelSide * raysPerPixelSide;
+            }
 
             if (!features.extra.enableMultipleRaysPerPixel) {
                 const Ray cameraRay = camera.generateRay(normalizedPixelPos);
-                finalColor = getFinalColor(scene, bvh, cameraRay, features, 5);
-            } else {
-                const float xOffset = 1 / float(windowResolution.x) * 2.f;
-                const float yOffset = 1 / float(windowResolution.y) * 2.f;
-                std::uniform_real_distribution<float> xDistr(0.f, xOffset);
-                std::uniform_real_distribution<float> yDistr(0.f, yOffset);
-
-                auto colorSum = glm::vec3(0.f);
-                for (size_t i = 0; i < raysPerPixel; i++) {
-                    const auto newNormalizePixelPos = normalizedPixelPos + glm::vec2(xDistr(gen), yDistr(gen));
-                    const auto cameraRay = camera.generateRay(newNormalizePixelPos);
-                    colorSum += getFinalColor(scene, bvh, cameraRay, features, 5);
-                }
-                finalColor = colorSum / float(raysPerPixel);
+                colorSum += getFinalColor(scene, bvh, cameraRay, features, 5);
+                raysCast++;
             }
+
+            glm::vec3 finalColor = colorSum / float(raysCast);
             screen.setPixel(x, y, finalColor);
         }
     }

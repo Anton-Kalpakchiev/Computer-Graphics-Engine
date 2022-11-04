@@ -2,7 +2,7 @@
 #include <glm/geometric.hpp>
 
 glm::vec3 computeBarycentricCoord (const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& p)
-{
+{//from Real-Time Collision Detection by Christer Ericson http://realtimecollisiondetection.net/
     glm::vec3 a = v1 - v0, b = v2 - v0, c = p - v0;
     float d00 = glm::dot(a, a);
     float d01 = glm::dot(a, b);

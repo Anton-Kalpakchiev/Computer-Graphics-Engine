@@ -92,11 +92,11 @@ int main(int argc, char** argv)
                     cameraPos = window.getNormalizedCursorPos();
                     savedCamera = camera;
                     auto pixelPos = cameraPos * 2.f - 1.f;
-                    if (config.features.extra.enableMultipleRaysPerPixel) {
+                    if (config.features.extra.enableMultipleRaysPerPixel && debugSampleRays) {
                         auto ws = config.windowSize;
                         auto pixelSize = glm::vec2(float(ws.x) * 0.00005f, float(ws.y) * 0.00005f);
                         optDebugRays =  getRaySamples(pixelPos, pixelSize, savedCamera.value(), raysPerPixelSide);
-                    } if (config.features.extra.enableDepthOfField) {
+                    } else if (config.features.extra.enableDepthOfField && debugDoFRays) {
                         optDebugRays = getDOFRays(pixelPos, savedCamera.value(), focusPlaneDistance, blurStrength, samplesDoF);
                     } else {
                         optDebugRays = { camera.generateRay(pixelPos) };

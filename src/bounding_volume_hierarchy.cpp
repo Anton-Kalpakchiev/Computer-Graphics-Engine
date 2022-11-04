@@ -14,6 +14,10 @@
 #include <variant>
 #include <optional>
 #include <stack>
+#include <fmt/chrono.h>
+#include <fmt/core.h>
+
+size_t trianglesPerLeaf;
 
 std::optional<AxisAlignedBox> getBoundingBox(std::vector<Primitive>::const_iterator beg, std::vector<Primitive>::const_iterator end, Scene* scene) {
     std::optional<AxisAlignedBox> res;
@@ -132,6 +136,7 @@ size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t depth) 
     if (depth + 1 == MAX_DEPTH || beg + 1 == end) {
         nodes.push_back(Node { aabb, { true, depth, beg, end } });
         m_numLeaves++;
+        trianglesPerLeaf = std::max(trianglesPerLeaf, end - beg);
         return nodes.size() - 1;
     }
     auto mid = splitFunc(primitives, beg, end, depth, m_pScene, sahCutsPerLevel[depth]);
@@ -144,7 +149,11 @@ size_t BoundingVolumeHierarchy::createBVH(size_t beg, size_t end, size_t depth) 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& features)
     : m_pScene(pScene)
 {
-
+    trianglesPerLeaf = 0;
+    using clock = std::chrono::high_resolution_clock;
+    const auto start = clock::now();
+    std::string start_time_string = fmt::format("{:%Y-%m-%d-%H:%M:%S}", fmt::localtime(std::time(nullptr)));  
+    
     // Get all triangles of the scene into the BVH
     for (size_t meshIdx = 0; const auto& mesh : pScene->meshes) {
 
@@ -176,6 +185,12 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
     // We have all the primitives and their centers in the primitves vector
     // Create the BVH itself
     root = createBVH(0, primitives.size(), 0);
+
+
+    const auto end = clock::now();
+    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    fmt::print("BVH generation took {} ms.\n", duration);
+    fmt::print("Max triangles per node is: {}\n", trianglesPerLeaf);
 }
 
 // Return the depth of the tree that you constructed. This is used to tell the

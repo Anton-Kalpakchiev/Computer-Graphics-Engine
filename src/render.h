@@ -10,6 +10,9 @@ DISABLE_WARNINGS_POP()
 extern float bloomScalar;
 extern float bloomThreshold;
 extern int bloomDebugOption;
+extern int raysPerPixelSide;
+extern int raysPerReflection;
+extern float alphaModifier;
 
 // Forward declarations.
 
@@ -18,8 +21,6 @@ class Screen;
 class Trackball;
 class BvhInterface;
 struct Features;
-
-extern int raysPerPixelSide;
 
 // Main rendering function.
 void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInterface& bvh, Screen& screen, const Features& features);

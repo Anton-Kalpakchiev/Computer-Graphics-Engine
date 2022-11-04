@@ -33,6 +33,22 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
         Ray reflection = computeReflectionRay(ray, hitInfo);
 
+        if(features.extra.enableTransparency && !features.enableRecursive && !features.extra.enableGlossyReflection){
+            if(hitInfo.material.transparency == 1.0f || rayDepth <= 0){
+                return Lo;
+            }
+            Lo *= hitInfo.material.transparency;
+            Ray t = Ray();
+            t.origin = (0.00001f + ray.t) * ray.direction + ray.origin;
+            t.direction = ray.direction;
+            HitInfo h = HitInfo();
+            h.normal = hitInfo.normal;
+            bvh.intersect(t, h, features);
+            drawRay(t, Lo);
+            Lo += (1.0f - hitInfo.material.transparency) * recursiveRayTrace(scene, bvh, t, features, rayDepth - 1, rayDepthInitial);
+        }
+
+
         if (!((reflection.direction == glm::vec3(0.0f) && reflection.origin == glm::vec3(0.0f) && reflection.t == 0.0f) || rayDepth < 1)) {
 
             if (features.enableRecursive) {
@@ -84,7 +100,38 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
                     Lo += recursiveRayTrace(scene, bvh, reflection, features, rayDepth - 1, rayDepthInitial);
                 }
             }
+
         }
+
+        if (features.enableRecursive && !features.extra.enableGlossyReflection) {
+            Ray reflection;
+            if(features.extra.enableTransparency && hitInfo.material.transparency != 1.0f){
+                reflection = Ray();
+                reflection.origin = (0.00001f + ray.t) * ray.direction + ray.origin;
+                reflection.direction = ray.direction;
+            }else{
+                reflection = computeReflectionRay(ray, hitInfo);
+            }
+
+            if(!(reflection.direction == glm::vec3(0.0f) && reflection.origin == glm::vec3(0.0f) && reflection.t == 0.0f)){
+                    if(rayDepth > 0){
+                        Lo += recursiveRayTrace(scene, bvh, reflection, features, rayDepth - 1, rayDepthInitial);
+                    }
+            }
+
+            if(hitInfo.material.transparency != 1){
+                glm::vec3 vec = recursiveRayTrace(scene, bvh, reflection, features, rayDepth - 1, rayDepthInitial);
+                glm::vec3 v = hitInfo.material.transparency * vec + (1 - hitInfo.material.transparency) * Lo;
+                HitInfo h = HitInfo();
+                h.normal = hitInfo.normal;
+                bvh.intersect(reflection, h, features);
+                drawRay(ray, v);
+                return v;
+            }
+
+        }
+
+
         // Draw a white debug ray if the ray hits.
         if (features.enableShading) {
             drawRay(ray, Lo);

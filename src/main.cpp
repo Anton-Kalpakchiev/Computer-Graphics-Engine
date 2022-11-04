@@ -185,7 +185,7 @@ int main(int argc, char** argv)
             }
             if (config.features.enableSoftShadow) {
                 ImGui::SliderInt("Segment Light Samples", &segmentLightSamples, 1, 100);
-                ImGui::SliderInt("Parallelogram Light Direction Samples", &parallelogramLightDirectionSamples, 1, 15);
+                ImGui::SliderInt("Parallelogram Light Direction Samples", &parallelogramLightDirectionSamples, 1, 50);
             }
             if (config.features.extra.enableGlossyReflection) {
                 ImGui::SliderInt("Rays Per Reflection", &raysPerReflection, 1, 100);

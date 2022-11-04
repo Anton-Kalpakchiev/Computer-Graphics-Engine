@@ -373,7 +373,21 @@ int main(int argc, char** argv)
                         auto pixelPos = cameraPos * 2.f - 1.f;
                         auto rays = getDOFRays(pixelPos, savedCamera.value(), focusPlaneDistance, blurStrength, samplesDoF);
                         Plane focalPlane = getPlane(savedCamera.value(), focusPlaneDistance);
-                        
+                        glm::vec3 thisNormal = glm::normalize(focalPlane.normal);
+                        glm::vec3 t = thisNormal;
+                        int minIdx = 0;
+                        float min = t.x;
+                        if (t.y < min) {
+                            minIdx = 1;
+                            min = t.y;
+                        }
+                        if (t.z < min) {
+                            minIdx = 2;
+                            min = t.z;
+                        }
+                        t[minIdx] = 1;
+                        glm::vec3 u = glm::cross(u, t) / glm::length(glm::cross(u, t));
+                        glm::vec3 v = glm::cross(u, )
 
                         for (const auto& ray : rays) {
                             (void)getFinalColor(scene, bvh, ray, config.features, 0);

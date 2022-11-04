@@ -180,7 +180,7 @@ int main(int argc, char** argv)
             if (config.features.extra.enableDepthOfField) {
                 ImGui::SliderInt("DoF Samples", &samplesDoF, 1, 100);
                 ImGui::SliderFloat("Focal length", &focusPlaneDistance, 0.f, 10.f);
-                ImGui::SliderFloat("Blur strength", &blurStrength, .0005f, 0.1f);
+                ImGui::SliderFloat("Blur strength", &blurStrength, .0001f, 0.05f);
             }
 
             ImGui::Separator();

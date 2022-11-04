@@ -175,7 +175,7 @@ int main(int argc, char** argv)
                 ImGui::SliderInt("Bloom Debug Option", &bloomDebugOption, 0, 2);
             }
             if (config.features.extra.enableGlossyReflection) {
-                ImGui::SliderInt("Rays Per Reflection", &raysPerReflection, 1, 10);
+                ImGui::SliderInt("Rays Per Reflection", &raysPerReflection, 1, 100);
                 ImGui::SliderFloat("Alpha Multiplier", &alphaModifier, 0.01f, 2.f);
             }
             if (config.features.extra.enableMultipleRaysPerPixel) {

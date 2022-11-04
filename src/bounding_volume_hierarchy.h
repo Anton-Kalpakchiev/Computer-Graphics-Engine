@@ -28,6 +28,11 @@ struct SAHCuts {
     size_t chosenInd;
 };
 
+struct Pair{
+    int node;
+    float t;
+};
+
 struct Node {
     AxisAlignedBox aabb;
 

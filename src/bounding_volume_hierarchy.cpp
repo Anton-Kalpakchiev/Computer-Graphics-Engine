@@ -14,6 +14,8 @@
 #include <variant>
 #include <optional>
 #include <stack>
+#include <queue>
+#include <iostream>
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 
@@ -292,6 +294,11 @@ std::optional<Primitive> getIntersecting(auto beg, auto end, Ray& ray, HitInfo& 
     return res;
 }
 
+bool Compare(Pair a, Pair b)
+{
+    return a.t < b.t;
+}
+
 // Return true if something is hit, returns false otherwise. Only find hits if they are closer than t stored
 // in the ray and if the intersection is on the correct side of the origin (the new t >= 0). Replace the code
 // by a bounding volume hierarchy acceleration structure as described in the assignment. You can change any
@@ -309,13 +316,15 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
 
-        auto stack = std::stack<Node>();
-        stack.push(nodes[root]);
+        //auto stack = std::stack<Node>();
+        std::priority_queue<Pair, std::vector<Pair>, std::function<bool(Pair, Pair)>> pq(Compare);
+        pq.push({int(root), std::numeric_limits<float>::max()});
 
-        while(!stack.empty()){
+        while(!pq.empty()){
 
-            auto parent = stack.top();
-            stack.pop();
+            auto parent = nodes[pq.top().node];
+            auto idx = pq.top().node;
+            pq.pop();
 
             if (parent.data[0] == 1) {
 
@@ -324,6 +333,12 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 auto maybePrim = getIntersecting(primitives.begin() + beg, primitives.begin() + end, ray, hitInfo, m_pScene);
                 if (maybePrim.has_value()) {
                     prim = maybePrim.value();
+                    if(!pq.empty()){
+                        auto k = pq.top();
+                        if(ray.t < k.t){
+                            break;
+                        }
+                    }
                 }
 
             } else {
@@ -331,11 +346,15 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 auto left = nodes[parent.data[4]];
                 auto right = nodes[parent.data[5]];
 
+                auto tLeft = std::numeric_limits<float>::max();
+                auto tRight = std::numeric_limits<float>::max();
+
                 auto rollBack = ray.t;
 
                 ray.t = std::numeric_limits<float>::max();
                 bool leftBox = intersectRayWithShape(left.aabb, ray);
                 if(leftBox){
+                    tLeft = ray.t;
                     if(m_recursionLevel == RECURSION_LEVEL){
                         drawAABB(left.aabb, DrawMode::Wireframe, glm::vec3(0.9f));
                     }
@@ -344,6 +363,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 ray.t = std::numeric_limits<float>::max();
                 bool rightBox = intersectRayWithShape(right.aabb, ray);
                 if(rightBox){
+                    tRight = ray.t;
                     if(m_recursionLevel == RECURSION_LEVEL){
                         drawAABB(right.aabb, DrawMode::Wireframe, glm::vec3(0.9f));
                     }
@@ -351,8 +371,8 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
                 ray.t = rollBack;
                 
-                if (leftBox) stack.push(left);
-                if (rightBox) stack.push(right);
+                if (leftBox) pq.push({int(parent.data[4]), tLeft});
+                if (rightBox) pq.push({int(parent.data[5]), tRight});
                 if(!leftBox && !rightBox){
                     if(m_recursionLevel == RECURSION_LEVEL){
                         drawAABB(parent.aabb, DrawMode::Wireframe, {0.9f, 0.0f, 0.0f});

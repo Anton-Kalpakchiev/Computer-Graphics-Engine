@@ -174,6 +174,10 @@ int main(int argc, char** argv)
                 ImGui::SliderFloat("Bloom Threshold", &bloomThreshold, 0.0f, 1.0f);
                 ImGui::SliderInt("Bloom Debug Option", &bloomDebugOption, 0, 2);
             }
+            if (config.features.extra.enableGlossyReflection) {
+                ImGui::SliderInt("Rays Per Reflection", &raysPerReflection, 1, 10);
+                ImGui::SliderFloat("Alpha Multiplier", &alphaModifier, 0.01f, 2.f);
+            }
             if (config.features.extra.enableMultipleRaysPerPixel) {
                 ImGui::SliderInt("Ray samples per pixel side", &raysPerPixelSide, 1, 10);
             }

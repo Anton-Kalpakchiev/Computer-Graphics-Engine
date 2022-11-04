@@ -10,13 +10,15 @@
 #include <omp.h>
 #endif
 
-int raysPerPixelSide = 1;//implemented as a slider
+int raysPerPixelSide = 1;//implemented as a slider for multipleRaysPerPixel
+
 float bloomScalar = .3f;//implemented as a slider
 float bloomThreshold = .4f;//implemented as a slider
 int bloomDebugOption = 0; //implemented as a slider, when 0 (default), shows the resulting picture
-int raysPerReflection = 40; // TODO implement as a slider
-int glossyReflectionsCap = 3;//cap of glossy recursive reflections
-float alphaModifier = 1/1.0f;
+
+int glossyReflectionsCap = 3; // cap of glossy recursive reflections
+int raysPerReflection = 40;//implemented as a slider
+float alphaModifier = 1.f;//implemented as a slider
 
 glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth, int rayDepthInitial)
 {
@@ -47,17 +49,15 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
                     t[minIdx] = 1.0f;
                     glm::vec3 u = glm::cross(t, w) / glm::length(glm::cross(t, w));
                     glm::vec3 v = glm::cross(w, u);
-
                     float a = (1 / hitInfo.material.shininess) * alphaModifier;
-     
 
-                    //drawing the Debug Plane
+                    //Glossy reflections visual debugger
                     glm::vec3 v0 = reflection.origin + w + (u / 2.0f + v / 2.0f) * a;
                     glm::vec3 v1 = reflection.origin + w + (u / 2.0f + v / 2.0f - v) * a;
                     glm::vec3 v2 = reflection.origin + w + (u / 2.0f + v / 2.0f - v - u) * a;
                     glm::vec3 v3 = reflection.origin + w + (u / 2.0f + v / 2.0f - u) * a;
                     glm::vec3 debugColor = glm::vec3(1.0f, 0.0f, 1.0f);
-                    float debugTransparency = .05f;
+                    float debugTransparency = .5f;
                     drawPlane(v0, v1, v2, v3, debugColor, debugTransparency);
 
                     glm::vec3 totalColor = { .0f, .0f, .0f };
@@ -68,12 +68,12 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
                         float weightV = -a / 2 + randTwo * a;
                         glm::vec3 glossReflection = w + weightU * u + weightV * v;
                         glossReflection = glm::normalize(glossReflection);
-                        if (glm::dot(hitInfo.normal, glossReflection) > 0) {//angle is more than 90 degrees
+                        if (glm::dot(hitInfo.normal, glossReflection) > 0) {//angle is less than 90 degrees
                             Ray glossRay = Ray(reflection.origin, glossReflection, std::numeric_limits<float>::max());
                             glm::vec3 color = recursiveRayTrace(scene, bvh, glossRay, features, glm::min(rayDepth - 1, glossyReflectionsCap), rayDepthInitial);
                             totalColor += color * hitInfo.material.ks;
                         }
-                        else{//generate new Reflection
+                        else{//generate new ray
                             i--;
                         }
                         
@@ -85,7 +85,6 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
                 }
             }
         }
-
         // Draw a white debug ray if the ray hits.
         if (features.enableShading) {
             drawRay(ray, Lo);
@@ -122,7 +121,7 @@ void renderBloomFilter(Screen& screen, const Features& features)
             screenThreshold[i] = glm::vec3 { 0.0f, 0.0f, 0.0f };
         }
     }
-    for (int y = 0; y < windowResolution.y - 1; y++) { // compute boxfilter with gaussian distribution per pixel and add bloom
+    for (int y = 0; y < windowResolution.y - 1; y++) { // compute filter with gaussian distribution per pixel and add bloom
         for (int x = 0; x < windowResolution.x - 1; x++) {
             int idx = screen.indexAt(x, y);
             glm::vec3 sum = { 0.0f, 0.0f, 0.0f };

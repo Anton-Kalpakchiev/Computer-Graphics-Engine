@@ -6,6 +6,9 @@
 #include "scene.h"
 #include "shading.h"
 
+extern int segmentLightSamples;
+extern int parallelogramLightDirectionSamples;
+
 void sampleSegmentLight (const SegmentLight& segmentLight, glm::vec3& position, glm::vec3& color);
 
 void sampleParallelogramLight (const ParallelogramLight& parallelogramLight, glm::vec3& position, glm::vec3& color);

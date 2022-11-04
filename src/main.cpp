@@ -63,23 +63,44 @@ int main(int argc, char** argv)
         camera.setCamera(config.cameras[0].lookAt, glm::radians(config.cameras[0].rotation), config.cameras[0].distanceFromLookAt);
 
         SceneType sceneType { SceneType::SingleTriangle };
-        std::optional<Ray> optDebugRay;
+        std::optional<std::vector<Ray>> optDebugRays;
         Scene scene = loadScenePrebuilt(sceneType, config.dataPath);
-        BvhInterface bvh { &scene };
+        BvhInterface bvh { &scene, config.features };
 
         int bvhDebugLevel = 0;
         int bvhDebugLeaf = 0;
+        int bvhRecursionLevel = 0;
+        int sahDebugLevel = 0;
+        int sahDebugAxis = 0;
+        
         bool debugBVHLevel { false };
         bool debugBVHLeaf { false };
+        bool debugBVHTraversal {false};
+        bool debugSampleRays { false };
+        bool debugDoFRays { false };
+        bool drawSAHSplits { false };
         ViewMode viewMode { ViewMode::Rasterization };
+
+        glm::vec2 cameraPos;
+        std::optional<Trackball> savedCamera;
 
         window.registerKeyCallback([&](int key, int /* scancode */, int action, int /* mods */) {
             if (action == GLFW_PRESS) {
                 switch (key) {
                 case GLFW_KEY_R: {
                     // Shoot a ray. Produce a ray from camera to the far plane.
-                    const auto tmp = window.getNormalizedCursorPos();
-                        optDebugRay = camera.generateRay(tmp * 2.0f - 1.0f);
+                    cameraPos = window.getNormalizedCursorPos();
+                    savedCamera = camera;
+                    auto pixelPos = cameraPos * 2.f - 1.f;
+                    if (config.features.extra.enableMultipleRaysPerPixel && debugSampleRays) {
+                        auto ws = config.windowSize;
+                        auto pixelSize = glm::vec2(float(ws.x) * 0.00005f, float(ws.y) * 0.00005f);
+                        optDebugRays =  getRaySamples(pixelPos, pixelSize, savedCamera.value(), raysPerPixelSide);
+                    } else if (config.features.extra.enableDepthOfField && debugDoFRays) {
+                        optDebugRays = getDOFRays(pixelPos, savedCamera.value(), focusPlaneDistance, blurStrength, samplesDoF);
+                    } else {
+                        optDebugRays = { camera.generateRay(pixelPos) };
+                    }
                 } break;
                 case GLFW_KEY_A: {
                     debugBVHLeafId++;
@@ -115,13 +136,13 @@ int main(int argc, char** argv)
                     "Custom",
                 };
                 if (ImGui::Combo("Scenes", reinterpret_cast<int*>(&sceneType), items.data(), int(items.size()))) {
-                    optDebugRay.reset();
+                    optDebugRays.reset();
                     scene = loadScenePrebuilt(sceneType, config.dataPath);
                     selectedLightIdx = scene.lights.empty() ? -1 : 0;
-                    bvh = BvhInterface(&scene);
-                    if (optDebugRay) {
+                    bvh = BvhInterface(&scene, config.features);
+                    if (optDebugRays && !debugSampleRays && !debugDoFRays) {
                         HitInfo dummy {};
-                        bvh.intersect(*optDebugRay, dummy, config.features);
+                        bvh.intersect(optDebugRays.value().at(0), dummy, config.features);
                     }
                 }
             }
@@ -148,12 +169,38 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Bloom effect", &config.features.extra.enableBloomEffect);
                 ImGui::Checkbox("Texture filtering(bilinear interpolation)", &config.features.extra.enableBilinearTextureFiltering);
                 ImGui::Checkbox("Texture filtering(mipmapping)", &config.features.extra.enableMipmapTextureFiltering);
+                ImGui::Checkbox("Sample multiple rays per pixel", &config.features.extra.enableMultipleRaysPerPixel);
                 ImGui::Checkbox("Glossy reflections", &config.features.extra.enableGlossyReflection);
                 ImGui::Checkbox("Transparency", &config.features.extra.enableTransparency);
                 ImGui::Checkbox("Depth of field", &config.features.extra.enableDepthOfField);
             }
-            ImGui::Separator();
 
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Text("Options");
+            if (config.features.extra.enableBloomEffect) {
+                ImGui::SliderFloat("Bloom Scalar", &bloomScalar, 0.0f, 1.0f);
+                ImGui::SliderFloat("Bloom Threshold", &bloomThreshold, 0.0f, 1.0f);
+                ImGui::SliderInt("Bloom Debug Option", &bloomDebugOption, 0, 2);
+            }
+            if (config.features.enableSoftShadow) {
+                ImGui::SliderInt("Segment Light Samples", &segmentLightSamples, 1, 100);
+                ImGui::SliderInt("Parallelogram Light Direction Samples", &parallelogramLightDirectionSamples, 1, 50);
+            }
+            if (config.features.extra.enableGlossyReflection) {
+                ImGui::SliderInt("Rays Per Reflection", &raysPerReflection, 1, 100);
+                ImGui::SliderFloat("Alpha Multiplier", &alphaModifier, 0.01f, 2.f);
+            }
+            if (config.features.extra.enableMultipleRaysPerPixel) {
+                ImGui::SliderInt("Ray samples per pixel side", &raysPerPixelSide, 1, 10);
+            }
+            if (config.features.extra.enableDepthOfField) {
+                ImGui::SliderInt("DoF Samples", &samplesDoF, 1, 100);
+                ImGui::SliderFloat("Focal length", &focusPlaneDistance, 0.f, 10.f);
+                ImGui::SliderFloat("Blur strength", &blurStrength, .0001f, 0.05f);
+            }
+
+            ImGui::Separator();
             if (ImGui::TreeNode("Camera(read only)")) {
                 auto lookAt = camera.lookAt();
                 auto position = camera.position();
@@ -165,9 +212,13 @@ int main(int argc, char** argv)
                 ImGui::InputFloat3("Rotation", glm::value_ptr(rotation), "%0.2f", ImGuiInputTextFlags_ReadOnly);
                 ImGui::TreePop();
             }
+            ImGui::Separator();
 
             ImGui::Spacing();
             ImGui::Separator();
+            if (ImGui::Button("Regenerate BVH with current settings")) {
+                bvh = BvhInterface(&scene, config.features);
+            }
             if (ImGui::Button("Render to file")) {
                 // Show a file picker.
                 nfdchar_t* pOutPath = nullptr;
@@ -193,11 +244,30 @@ int main(int argc, char** argv)
             ImGui::Text("Debugging");
             if (viewMode == ViewMode::Rasterization) {
                 ImGui::Checkbox("Draw BVH Level", &debugBVHLevel);
-                if (debugBVHLevel)
+                if (debugBVHLevel) {
                     ImGui::SliderInt("BVH Level", &bvhDebugLevel, 0, bvh.numLevels() - 1);
+                }
                 ImGui::Checkbox("Draw BVH Leaf", &debugBVHLeaf);
-                if (debugBVHLeaf)
+                if (debugBVHLeaf) {
                     ImGui::SliderInt("BVH Leaf", &bvhDebugLeaf, 1, bvh.numLeaves());
+                }
+                
+                ImGui::Checkbox("Draw SAH splits per BVH level", &drawSAHSplits);
+                if (drawSAHSplits) {
+                    ImGui::SliderInt("Split level", &sahDebugLevel, 0, bvh.numLevels() - 1);
+                    ImGui::SliderInt("Split axis", &sahDebugAxis, 0, 2);
+                }
+
+                ImGui::Checkbox("Draw BVH Traversal Recursion Level", &debugBVHTraversal);
+                if (debugBVHTraversal){
+                    ImGui::SliderInt("BVH Traversal Recursion Level", &bvhRecursionLevel, 0, 5);
+                }else{
+                    bvh.setDebugRecursionLevel(-1);
+                }
+                if (config.features.extra.enableMultipleRaysPerPixel)
+                    ImGui::Checkbox("Ray sampling debug", &debugSampleRays);
+                if (config.features.extra.enableDepthOfField)
+                    ImGui::Checkbox("Depth of field debug", &debugDoFRays);
             }
 
             ImGui::Spacing();
@@ -318,20 +388,54 @@ int main(int argc, char** argv)
                 } else {
                     drawSceneOpenGL(scene);
                 }
-                if (optDebugRay) {
+                if (optDebugRays) {
                     // Call getFinalColor for the debug ray. Ignore the result but tell the function that it should
                     // draw the rays instead.
                     enableDebugDraw = true;
                     glDisable(GL_LIGHTING);
                     glDepthFunc(GL_LEQUAL);
-                    (void)getFinalColor(scene, bvh, *optDebugRay, config.features);
+                    if (!debugSampleRays && !debugDoFRays) {
+                        (void)getFinalColor(scene, bvh, optDebugRays.value().at(0), config.features, 5);
+                    } else  {
+                        for (const auto& ray : optDebugRays.value()) {
+                            (void)getFinalColor(scene, bvh, ray, config.features, 0);
+                        }
+                    }
+                    if (config.features.extra.enableDepthOfField) {
+
+                        Plane focalPlane = getPlane(savedCamera.value(), focusPlaneDistance);
+                        glm::vec3 thisNormal = glm::normalize(focalPlane.normal);
+                        glm::vec3 t = thisNormal;
+                        int minIdx = 0;
+                        float min = t.x;
+                        if (t.y < min) {
+                            minIdx = 1;
+                            min = t.y;
+                        }
+                        if (t.z < min) {
+                            minIdx = 2;
+                            min = t.z;
+                        }
+                        t[minIdx] = 1;
+                        glm::vec3 u = glm::cross(thisNormal, t) / glm::length(glm::cross(thisNormal, t));
+                        glm::vec3 v = glm::cross(thisNormal, u);
+                        
+                        float scalar = 1.f;
+                        glm::vec3 v0 = thisNormal * focalPlane.D + u * scalar + v * scalar;
+                        glm::vec3 v1 = thisNormal * focalPlane.D + u * scalar - v * scalar;
+                        glm::vec3 v2 = thisNormal * focalPlane.D - u * scalar - v * scalar;
+                        glm::vec3 v3 = thisNormal * focalPlane.D - u * scalar + v * scalar;
+                        //drawPlane(v0, v1, v2, v3, glm::vec3(.11f, .11f, .69f), .3f);
+
+                        drawPlane(v0, v1, v2, v3, glm::vec3(.11f, .11f, .69f), .3f);
+                    }
                     enableDebugDraw = false;
                 }
                 glPopAttrib();
 
                 drawLightsOpenGL(scene, camera, selectedLightIdx);
 
-                if (debugBVHLevel || debugBVHLeaf) {
+                if (debugBVHLevel || debugBVHLeaf || debugBVHTraversal || drawSAHSplits) {
                     glPushAttrib(GL_ALL_ATTRIB_BITS);
                     setOpenGLMatrices(camera);
                     glDisable(GL_LIGHTING);
@@ -342,10 +446,18 @@ int main(int argc, char** argv)
                     glEnable(GL_BLEND);
                     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                     enableDebugDraw = true;
-                    if (debugBVHLevel)
+                    if (drawSAHSplits) {
+                        bvh.debugDrawSAHSplits(sahDebugLevel, sahDebugAxis);
+                    }
+                    if (debugBVHLevel) {
                         bvh.debugDrawLevel(bvhDebugLevel);
-                    if (debugBVHLeaf)
+                    }
+                    if (debugBVHLeaf) {
                         bvh.debugDrawLeaf(bvhDebugLeaf);
+                    }
+                    if (debugBVHTraversal){
+                        bvh.setDebugRecursionLevel(bvhRecursionLevel);
+                    }
                     enableDebugDraw = false;
                     glPopAttrib();
                 }
@@ -387,7 +499,7 @@ int main(int argc, char** argv)
                        }),
             config.scene);
 
-        BvhInterface bvh { &scene };
+        BvhInterface bvh { &scene, config.features };
 
         using clock = std::chrono::high_resolution_clock;
         // Create output directory if it does not exist.

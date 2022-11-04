@@ -13,7 +13,7 @@ class BvhInterface {
 public:
 
     // Constructor. Receives the scene and builds the bounding volume hierarchy
-    BvhInterface(Scene* pScene);
+    BvhInterface(Scene* pScene, const Features& features);
 
 
     // Return how many levels there are in the tree that you have constructed.
@@ -30,6 +30,14 @@ public:
     // Visual Debug 2: Draw the triangles of the i-th leaf
     void debugDrawLeaf(int leafIdx);
 
+    // Set recursion level
+    void setRecursionLevel(int level) const;
+
+    // Set debug recursion level
+    void setDebugRecursionLevel(int level) const;
+
+    // Visual Debug SAH + binning: draw considered splits and the chosen one per level
+    void debugDrawSAHSplits(int level, int axis);
 
     // Return true if something is hit, returns false otherwise.
     // Only find hits if they are closer than t stored in the ray and the intersection

@@ -3,9 +3,9 @@
 
 //! DON'T TOUCH THIS FILE!
 
-BvhInterface::BvhInterface(Scene* pScene)
+BvhInterface::BvhInterface(Scene* pScene, const Features& features)
 {
-    m_impl = new BoundingVolumeHierarchy(pScene);
+    m_impl = new BoundingVolumeHierarchy(pScene, features);
 }
 
 // Return the depth of the tree that you constructed. This is used to tell the
@@ -22,6 +22,15 @@ int BvhInterface::numLeaves() const
     return m_impl->numLeaves();
 }
 
+// Set recursion level
+void BvhInterface::setRecursionLevel(int level) const{
+    m_impl->setRecursionLevel(level, false);
+}
+
+// Set debug recursion level
+void BvhInterface::setDebugRecursionLevel(int level) const{
+    m_impl->setRecursionLevel(level, true);
+}
 
 // Use this function to visualize your BVH. This is useful for debugging. Use the functions in
 // draw.h to draw the various shapes. We have extended the AABB draw functions to support wireframe
@@ -39,6 +48,11 @@ void BvhInterface::debugDrawLevel(int level)
 void BvhInterface::debugDrawLeaf(int leafIdx)
 {
     m_impl->debugDrawLeaf(leafIdx);
+}
+
+void BvhInterface::debugDrawSAHSplits(int level, int axis)
+{
+    m_impl->debugDrawSAHSplits(level, axis);
 }
 
 // Return true if something is hit, returns false otherwise. Only find hits if they are closer than t stored

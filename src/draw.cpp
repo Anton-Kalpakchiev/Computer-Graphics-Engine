@@ -45,7 +45,7 @@ void drawExampleOfCustomVisualDebug()
 }
 
 
-void drawTriangle (const Vertex& v0, const Vertex& v1, const Vertex& v2 ) {
+void drawTriangle(const Vertex& v0, const Vertex& v1, const Vertex& v2 ) {
     glBegin(GL_TRIANGLES);
         glNormal3fv(glm::value_ptr(v0.normal));
         glVertex3fv(glm::value_ptr(v0.position));
@@ -54,6 +54,11 @@ void drawTriangle (const Vertex& v0, const Vertex& v1, const Vertex& v2 ) {
         glNormal3fv(glm::value_ptr(v2.normal));
         glVertex3fv(glm::value_ptr(v2.position));
     glEnd();
+}
+
+void debugDrawTriangle(const Vertex& v0, const Vertex& v1, const Vertex& v2 ) {
+    if (!enableDebugDraw) return;
+    drawTriangle(v0, v1, v2);
 }
 
 void drawMesh(const Mesh& mesh)
@@ -89,6 +94,30 @@ void drawSphere(const Sphere& sphere)
     setMaterial(sphere.material);
     drawSphereInternal(sphere.center, sphere.radius);
     glPopAttrib();
+}
+
+void drawPlane(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3, const glm::vec3& color, float transparency)
+{
+    if (!enableDebugDraw) {
+        return;
+    }
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBegin(GL_QUADS);
+    glColor4f(color.x, color.y, color.z, transparency);
+    glVertex3fv(glm::value_ptr(v0));
+    glVertex3fv(glm::value_ptr(v1));
+    glVertex3fv(glm::value_ptr(v2));
+    glVertex3fv(glm::value_ptr(v3));
+    glEnd();
+    glPopAttrib();
+
+}
+
+void debugDrawSphere(const Sphere& sphere) {
+    if (!enableDebugDraw) return;
+    drawSphere(sphere);
 }
 
 void drawSphere(const glm::vec3& center, float radius, const glm::vec3& color /*= glm::vec3(1.0f)*/)
@@ -165,6 +194,11 @@ void drawAABB(const AxisAlignedBox& box, DrawMode drawMode, const glm::vec3& col
     }
     drawAABBInternal(box);
     glPopAttrib();
+}
+
+void setColor(const glm::vec3& color) 
+{
+    glColor3f(color.r, color.g, color.b);
 }
 
 void drawScene(const Scene& scene)

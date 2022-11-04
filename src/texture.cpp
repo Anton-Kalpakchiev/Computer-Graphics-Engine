@@ -2,6 +2,7 @@
 #include <cmath>
 #include <framework/image.h>
 #include <cmath>
+#include <algorithm>
 #include <iostream>
 
 glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Features& features)

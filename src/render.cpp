@@ -68,15 +68,11 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
                         float weightV = -a / 2 + randTwo * a;
                         glm::vec3 glossReflection = w + weightU * u + weightV * v;
                         glossReflection = glm::normalize(glossReflection);
-                        if (glm::dot(hitInfo.normal, glossReflection) > 0) {//angle is less than 90 degrees
+                        if (glm::dot(hitInfo.normal, glossReflection) > 0) { // angle is less than 90 degrees
                             Ray glossRay = Ray(reflection.origin, glossReflection, std::numeric_limits<float>::max());
                             glm::vec3 color = recursiveRayTrace(scene, bvh, glossRay, features, glm::min(rayDepth - 1, glossyReflectionsCap), rayDepthInitial);
                             totalColor += color * hitInfo.material.ks;
                         }
-                        else{//generate new ray
-                            i--;
-                        }
-                        
                     }
                     totalColor /= raysPerReflection;
                     Lo += totalColor;

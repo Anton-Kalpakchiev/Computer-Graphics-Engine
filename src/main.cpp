@@ -169,7 +169,7 @@ int main(int argc, char** argv)
             }
             if (config.features.extra.enableDepthOfField) {
                 ImGui::SliderInt("DoF Samples", &samplesDoF, 1, 100);
-                ImGui::SliderFloat("Focal length", &focusPlaneDistance, .5f, 5.f);
+                ImGui::SliderFloat("Focal length", &focusPlaneDistance, .1f, .5f);
                 ImGui::SliderFloat("Blur strength", &blurStrength, .0005f, 0.1f);
             }
 
@@ -386,8 +386,16 @@ int main(int argc, char** argv)
                             min = t.z;
                         }
                         t[minIdx] = 1;
-                        glm::vec3 u = glm::cross(u, t) / glm::length(glm::cross(u, t));
-                        glm::vec3 v = glm::cross(u, )
+                        glm::vec3 u = glm::cross(thisNormal, t) / glm::length(glm::cross(thisNormal, t));
+                        glm::vec3 v = glm::cross(thisNormal, u);
+                        
+                        float scalar = 2.f;
+                        glm::vec3 v0 = thisNormal * focalPlane.D + u * scalar + v * scalar;
+                        glm::vec3 v1 = thisNormal * focalPlane.D + u * scalar - v * scalar;
+                        glm::vec3 v2 = thisNormal * focalPlane.D - u * scalar - v * scalar;
+                        glm::vec3 v3 = thisNormal * focalPlane.D - u * scalar + v * scalar;
+                        drawPlane(v0, v1, v2, v3, glm::vec3(1.f, 1.f, 1.f), .5);
+
 
                         for (const auto& ray : rays) {
                             (void)getFinalColor(scene, bvh, ray, config.features, 0);

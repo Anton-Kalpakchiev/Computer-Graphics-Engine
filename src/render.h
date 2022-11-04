@@ -6,6 +6,7 @@ DISABLE_WARNINGS_PUSH()
 DISABLE_WARNINGS_POP()
 #include <framework/ray.h>
 #include <vector>
+#include <common.h>
 
 // Forward declarations.
 struct Scene;

@@ -6,13 +6,14 @@
 #include <fmt/printf.h>
 #include <random>
 #include <framework/trackball.h>
+#include <common.h>
 #ifdef NDEBUG
 #include <omp.h>
 #endif
 
 int raysPerPixelSide = 1;
 int samplesDoF = 1;
-float focusPlaneDistance = 1.5f;
+float focusPlaneDistance = .5f;
 float blurStrength = .005f;
 
 glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth, int rayDepthInitial){
@@ -88,9 +89,9 @@ std::vector<Ray> getRaySamples(const glm::vec2& pixelPos, const glm::vec2& pixel
 
 Plane getPlane(const Trackball& camera, float dist) {
     auto planeNormal = glm::normalize(camera.lookAt() - camera.position());
-    auto point = camera.position() + planeNormal * dist;
-    auto D = glm::dot(point, point);
-    return Plane(D, planeNormal);
+    /*auto point = camera.position() + planeNormal * dist;*/
+    /*auto D = glm::sqrt(glm::dot(point, point));*/
+    return Plane(dist, planeNormal);
 }
 
 glm::vec3 getIntersection(const Ray& ray, const Plane& plane) {

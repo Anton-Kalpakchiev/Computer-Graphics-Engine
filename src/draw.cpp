@@ -96,7 +96,7 @@ void drawSphere(const Sphere& sphere)
     glPopAttrib();
 }
 
-void drawPlane(glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, glm::vec3 color, float transparency = 1.0f)
+void drawPlane(glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, glm::vec3 color, float transparency)
 {
     if (!enableDebugDraw) {
         return;

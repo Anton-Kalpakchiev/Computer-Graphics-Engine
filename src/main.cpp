@@ -370,6 +370,11 @@ int main(int argc, char** argv)
                     }
                     if (config.features.extra.enableDepthOfField) {
 
+                        auto pixelPos = cameraPos * 2.f - 1.f;
+                        auto rays = getDOFRays(pixelPos, savedCamera.value(), focusPlaneDistance, blurStrength, samplesDoF);
+                        for (const auto& ray : rays) {
+                            (void)getFinalColor(scene, bvh, ray, config.features, 0);
+                        }
                     }
                     enableDebugDraw = false;
                 }

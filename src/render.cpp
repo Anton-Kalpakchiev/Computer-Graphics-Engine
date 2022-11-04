@@ -219,16 +219,7 @@ std::vector<Ray> getDOFRays(const glm::vec2& pixelPos, const Trackball& camera, 
         auto newDirection = focalPoint - newOrigin;
         res.emplace_back(Ray(newOrigin, newDirection));
     }
-    //auto point = ray.origin;
-
-    //for (int i = 0; i < n; i++) {
-        //for (int j = 0; j < n; j++) {
-            //auto newOrigin = point + i * side * v1 + j * side * v2;
-            //newOrigin += jitterGen(gen) * v1 + jitterGen(gen) * v2;
-            //auto direction = focalPoint - newOrigin;
-            //res.emplace_back(Ray(newOrigin, direction));
-        //}
-    //}
+    
     return res;
 }
 

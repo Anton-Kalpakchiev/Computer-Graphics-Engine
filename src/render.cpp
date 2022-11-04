@@ -11,8 +11,8 @@
 #include <omp.h>
 #endif
 
-int raysPerPixelSide = 1;
-int samplesDoF = 1;
+int raysPerPixelSide = 3;
+int samplesDoF = 5;
 float focusPlaneDistance = 3.f;
 float blurStrength = .005f;
 

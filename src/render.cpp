@@ -13,7 +13,7 @@
 
 int raysPerPixelSide = 1;
 int samplesDoF = 1;
-float focusPlaneDistance = .5f;
+float focusPlaneDistance = 3.f;
 float blurStrength = .005f;
 
 glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth, int rayDepthInitial){
@@ -91,7 +91,7 @@ Plane getPlane(const Trackball& camera, float dist) {
     auto planeNormal = glm::normalize(camera.lookAt() - camera.position());
     /*auto point = camera.position() + planeNormal * dist;*/
     /*auto D = glm::sqrt(glm::dot(point, point));*/
-    return Plane(dist, planeNormal);
+    return Plane(dist - (glm::sqrt(glm::dot(camera.position(), camera.position()))), planeNormal);
 }
 
 glm::vec3 getIntersection(const Ray& ray, const Plane& plane) {

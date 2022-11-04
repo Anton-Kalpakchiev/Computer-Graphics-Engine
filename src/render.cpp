@@ -52,10 +52,10 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
                     float a = (1 / hitInfo.material.shininess) * alphaModifier;
 
                     //Glossy reflections visual debugger
-                    glm::vec3 v0 = reflection.origin + w + (u / 2.0f + v / 2.0f) * a;
-                    glm::vec3 v1 = reflection.origin + w + (u / 2.0f + v / 2.0f - v) * a;
-                    glm::vec3 v2 = reflection.origin + w + (u / 2.0f + v / 2.0f - v - u) * a;
-                    glm::vec3 v3 = reflection.origin + w + (u / 2.0f + v / 2.0f - u) * a;
+                    glm::vec3 v0 = reflection.origin + (w + (u / 2.0f + v / 2.0f) * a) * .7f;
+                    glm::vec3 v1 = reflection.origin + (w + (u / 2.0f + v / 2.0f - v) * a)  * .7f;
+                    glm::vec3 v2 = reflection.origin + (w + (u / 2.0f + v / 2.0f - v - u) * a)  * .7f;
+                    glm::vec3 v3 = reflection.origin + (w + (u / 2.0f + v / 2.0f - u) * a) * .7f;
                     glm::vec3 debugColor = glm::vec3(1.0f, 0.0f, 1.0f);
                     float debugTransparency = .5f;
                     drawPlane(v0, v1, v2, v3, debugColor, debugTransparency);

@@ -70,11 +70,15 @@ int main(int argc, char** argv)
         int bvhDebugLevel = 0;
         int bvhDebugLeaf = 0;
         int bvhRecursionLevel = 0;
+        int sahDebugLevel = 0;
+        int sahDebugAxis = 0;
+        
         bool debugBVHLevel { false };
         bool debugBVHLeaf { false };
         bool debugBVHTraversal {false};
         bool debugSampleRays { false };
         bool debugDoFRays { false };
+        bool drawSAHSplits { false };
         ViewMode viewMode { ViewMode::Rasterization };
 
         glm::vec2 cameraPos;
@@ -174,6 +178,15 @@ int main(int argc, char** argv)
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Text("Options");
+            if (config.features.extra.enableBloomEffect) {
+                ImGui::SliderFloat("Bloom Scalar", &bloomScalar, 0.0f, 1.0f);
+                ImGui::SliderFloat("Bloom Threshold", &bloomThreshold, 0.0f, 1.0f);
+                ImGui::SliderInt("Bloom Debug Option", &bloomDebugOption, 0, 2);
+            }
+            if (config.features.extra.enableGlossyReflection) {
+                ImGui::SliderInt("Rays Per Reflection", &raysPerReflection, 1, 100);
+                ImGui::SliderFloat("Alpha Multiplier", &alphaModifier, 0.01f, 2.f);
+            }
             if (config.features.extra.enableMultipleRaysPerPixel) {
                 ImGui::SliderInt("Ray samples per pixel side", &raysPerPixelSide, 1, 10);
             }
@@ -201,7 +214,6 @@ int main(int argc, char** argv)
             ImGui::Separator();
             if (ImGui::Button("Regenerate BVH with current settings")) {
                 bvh = BvhInterface(&scene, config.features);
-                continue;
             }
             if (ImGui::Button("Render to file")) {
                 // Show a file picker.
@@ -228,11 +240,20 @@ int main(int argc, char** argv)
             ImGui::Text("Debugging");
             if (viewMode == ViewMode::Rasterization) {
                 ImGui::Checkbox("Draw BVH Level", &debugBVHLevel);
-                if (debugBVHLevel)
+                if (debugBVHLevel) {
                     ImGui::SliderInt("BVH Level", &bvhDebugLevel, 0, bvh.numLevels() - 1);
+                }
                 ImGui::Checkbox("Draw BVH Leaf", &debugBVHLeaf);
-                if (debugBVHLeaf)
+                if (debugBVHLeaf) {
                     ImGui::SliderInt("BVH Leaf", &bvhDebugLeaf, 1, bvh.numLeaves());
+                }
+                
+                ImGui::Checkbox("Draw SAH splits per BVH level", &drawSAHSplits);
+                if (drawSAHSplits) {
+                    ImGui::SliderInt("Split level", &sahDebugLevel, 0, bvh.numLevels() - 1);
+                    ImGui::SliderInt("Split axis", &sahDebugAxis, 0, 2);
+                }
+
                 ImGui::Checkbox("Draw BVH Traversal Recursion Level", &debugBVHTraversal);
                 if (debugBVHTraversal){
                     ImGui::SliderInt("BVH Traversal Recursion Level", &bvhRecursionLevel, 0, 5);
@@ -410,7 +431,7 @@ int main(int argc, char** argv)
 
                 drawLightsOpenGL(scene, camera, selectedLightIdx);
 
-                if (debugBVHLevel || debugBVHLeaf || debugBVHTraversal) {
+                if (debugBVHLevel || debugBVHLeaf || debugBVHTraversal || drawSAHSplits) {
                     glPushAttrib(GL_ALL_ATTRIB_BITS);
                     setOpenGLMatrices(camera);
                     glDisable(GL_LIGHTING);
@@ -421,11 +442,16 @@ int main(int argc, char** argv)
                     glEnable(GL_BLEND);
                     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                     enableDebugDraw = true;
-                    if (debugBVHLevel)
+                    if (drawSAHSplits) {
+                        bvh.debugDrawSAHSplits(sahDebugLevel, sahDebugAxis);
+                    }
+                    if (debugBVHLevel) {
                         bvh.debugDrawLevel(bvhDebugLevel);
-                    if (debugBVHLeaf)
+                    }
+                    if (debugBVHLeaf) {
                         bvh.debugDrawLeaf(bvhDebugLeaf);
-                    if(debugBVHTraversal){
+                    }
+                    if (debugBVHTraversal){
                         bvh.setDebugRecursionLevel(bvhRecursionLevel);
                     }
                     enableDebugDraw = false;

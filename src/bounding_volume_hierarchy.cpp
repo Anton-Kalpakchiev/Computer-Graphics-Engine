@@ -294,9 +294,19 @@ std::optional<Primitive> getIntersecting(auto beg, auto end, Ray& ray, HitInfo& 
     return res;
 }
 
-bool Compare(Pair a, Pair b)
+// Compare method
+bool Compare(const Pair& a, const Pair& b)
 {
     return a.t < b.t;
+}
+
+bool isInsideAABB(const glm::vec3& origin, const AxisAlignedBox& aabb){
+    for(int i = 0; i < 3; i++){
+        if(origin[i] < aabb.lower[i] || origin[i] > aabb.upper[i]){
+            return false;
+        }
+    }
+    return true;
 }
 
 // Return true if something is hit, returns false otherwise. Only find hits if they are closer than t stored
@@ -306,6 +316,7 @@ bool Compare(Pair a, Pair b)
 bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Features& features) const
 {
     std::optional<Primitive> prim;
+    Ray r = ray;
     // If BVH is not enabled, use the naive implementation.
     if (!features.enableAccelStructure) {
         
@@ -318,11 +329,12 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
         //auto stack = std::stack<Node>();
         std::priority_queue<Pair, std::vector<Pair>, std::function<bool(Pair, Pair)>> pq(Compare);
-        pq.push({int(root), std::numeric_limits<float>::max()});
+        intersectRayWithShape(nodes[root].aabb, ray);
+        pq.push({int(root), ray.t});
 
         while(!pq.empty()){
 
-            auto parent = nodes[pq.top().node];
+            const auto& parent = nodes[pq.top().node];
             auto idx = pq.top().node;
             pq.pop();
 
@@ -330,12 +342,12 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
                 size_t beg = parent.data[2];
                 size_t end = parent.data[3];
-                auto maybePrim = getIntersecting(primitives.begin() + beg, primitives.begin() + end, ray, hitInfo, m_pScene);
+                const auto& maybePrim = getIntersecting(primitives.begin() + beg, primitives.begin() + end, r, hitInfo, m_pScene);
                 if (maybePrim.has_value()) {
                     prim = maybePrim.value();
                     if(!pq.empty()){
                         auto k = pq.top();
-                        if(ray.t < k.t){
+                        if(r.t < k.t){
                             break;
                         }
                     }
@@ -343,36 +355,35 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
             } else {
 
-                auto left = nodes[parent.data[4]];
-                auto right = nodes[parent.data[5]];
-
-                auto tLeft = std::numeric_limits<float>::max();
-                auto tRight = std::numeric_limits<float>::max();
-
-                auto rollBack = ray.t;
+                const auto& left = nodes[parent.data[4]];
+                const auto& right = nodes[parent.data[5]];
 
                 ray.t = std::numeric_limits<float>::max();
                 bool leftBox = intersectRayWithShape(left.aabb, ray);
                 if(leftBox){
-                    tLeft = ray.t;
                     if(m_recursionLevel == RECURSION_LEVEL){
                         drawAABB(left.aabb, DrawMode::Wireframe, glm::vec3(0.9f));
+                    }
+                    if(isInsideAABB(ray.origin, parent.aabb)){
+                        pq.push({int(parent.data[4]), 0.0f});
+                    }else{
+                        pq.push({int(parent.data[4]), ray.t});
                     }
                 }
 
                 ray.t = std::numeric_limits<float>::max();
                 bool rightBox = intersectRayWithShape(right.aabb, ray);
                 if(rightBox){
-                    tRight = ray.t;
                     if(m_recursionLevel == RECURSION_LEVEL){
                         drawAABB(right.aabb, DrawMode::Wireframe, glm::vec3(0.9f));
                     }
+                    if(isInsideAABB(ray.origin, parent.aabb)){
+                        pq.push({int(parent.data[5]), 0.0f});
+                    }else{
+                        pq.push({int(parent.data[5]), ray.t});
+                    }
                 }
 
-                ray.t = rollBack;
-                
-                if (leftBox) pq.push({int(parent.data[4]), tLeft});
-                if (rightBox) pq.push({int(parent.data[5]), tRight});
                 if(!leftBox && !rightBox){
                     if(m_recursionLevel == RECURSION_LEVEL){
                         drawAABB(parent.aabb, DrawMode::Wireframe, {0.9f, 0.0f, 0.0f});
@@ -380,6 +391,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 }
             }
         }
+        ray = r;
     }
     
     if (!prim.has_value()) return false;

@@ -10,11 +10,13 @@
 #include <omp.h>
 #endif
 
-int raysPerPixelSide = 1;
-float bloomScalar = .3f;
-float bloomThreshold = .4f;
-int bloomDebugOption = 0; // afterPicture
-int raysPerReflection = 10; // TODO implement
+int raysPerPixelSide = 1;//implemented as a slider
+float bloomScalar = .3f;//implemented as a slider
+float bloomThreshold = .4f;//implemented as a slider
+int bloomDebugOption = 0; //implemented as a slider, when 0 (default), shows the resulting picture
+int raysPerReflection = 40; // TODO implement as a slider
+int glossyReflectionsCap = 3;//cap of glossy recursive reflections
+float alphaModifier = 1/1.0f;
 
 glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth, int rayDepthInitial)
 {
@@ -29,7 +31,7 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
 
             if (features.enableRecursive) {
                 glm::vec3 originalDirection = reflection.direction; // this is reflection of r
-                if (features.extra.enableGlossyReflection && hitInfo.material.shininess != 0) {//TODO make sure ray is never in an impossible matter, dot product
+                if (features.extra.enableGlossyReflection && hitInfo.material.shininess != 0) {
                     glm::vec3 w = glm::normalize(originalDirection);
                     glm::vec3 t = w;
                     float min = t.x;
@@ -46,17 +48,17 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
                     glm::vec3 u = glm::cross(t, w) / glm::length(glm::cross(t, w));
                     glm::vec3 v = glm::cross(w, u);
 
-                    float a = 1 / hitInfo.material.shininess;
-                    glm::vec3 toTakeAway = { a / 2.f, a / 2.f, a / 2.f };
-                    Ray e = Ray(reflection.origin + w + (u * a) / 2.0f + (v * a) / 2.0f, -u, 1);
-                    Ray b = Ray(reflection.origin + w + (u * a) / 2.0f + (v * a) / 2.0f, -v, 1);
-                    /*Ray c = Ray(reflection.origin + w - u, -v, 1);
-                    Ray d = Ray(reflection.origin + w - v, -u, 1);*/
+                    float a = (1 / hitInfo.material.shininess) * alphaModifier;
+     
 
-                    drawRay(e, glm::vec3 { 1.0f, 0.0f, 1.0f });
-                    drawRay(b, glm::vec3 { 1.0f, 0.0f, 1.0f });
-                    /* drawRay(c, glm::vec3 { 1.0f, 0.0f, 1.0f });
-                     drawRay(d, glm::vec3 { 1.0f, 0.0f, 1.0f });*/
+                    //drawing the Debug Plane
+                    glm::vec3 v0 = reflection.origin + w + (u / 2.0f + v / 2.0f) * a;
+                    glm::vec3 v1 = reflection.origin + w + (u / 2.0f + v / 2.0f - v) * a;
+                    glm::vec3 v2 = reflection.origin + w + (u / 2.0f + v / 2.0f - v - u) * a;
+                    glm::vec3 v3 = reflection.origin + w + (u / 2.0f + v / 2.0f - u) * a;
+                    glm::vec3 debugColor = glm::vec3(1.0f, 0.0f, 1.0f);
+                    float debugTransparency = .05f;
+                    drawPlane(v0, v1, v2, v3, debugColor, debugTransparency);
 
                     glm::vec3 totalColor = { .0f, .0f, .0f };
                     for (int i = 0; i < raysPerReflection; i++) {
@@ -66,9 +68,15 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
                         float weightV = -a / 2 + randTwo * a;
                         glm::vec3 glossReflection = w + weightU * u + weightV * v;
                         glossReflection = glm::normalize(glossReflection);
-                        Ray glossRay = Ray(reflection.origin, glossReflection, std::numeric_limits<float>::max());
-                        glm::vec3 color = recursiveRayTrace(scene, bvh, glossRay, features, glm::min(rayDepth - 1, 4), rayDepthInitial);
-                        totalColor += color * hitInfo.material.ks;
+                        if (glm::dot(hitInfo.normal, glossReflection) > 0) {//angle is more than 90 degrees
+                            Ray glossRay = Ray(reflection.origin, glossReflection, std::numeric_limits<float>::max());
+                            glm::vec3 color = recursiveRayTrace(scene, bvh, glossRay, features, glm::min(rayDepth - 1, glossyReflectionsCap), rayDepthInitial);
+                            totalColor += color * hitInfo.material.ks;
+                        }
+                        else{//generate new Reflection
+                            i--;
+                        }
+                        
                     }
                     totalColor /= raysPerReflection;
                     Lo += totalColor;

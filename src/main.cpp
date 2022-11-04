@@ -183,6 +183,10 @@ int main(int argc, char** argv)
                 ImGui::SliderFloat("Bloom Threshold", &bloomThreshold, 0.0f, 1.0f);
                 ImGui::SliderInt("Bloom Debug Option", &bloomDebugOption, 0, 2);
             }
+            if (config.features.enableSoftShadow) {
+                ImGui::SliderInt("Segment Light Samples", &segmentLightSamples, 1, 100);
+                ImGui::SliderInt("Parallelogram Light Direction Samples", &parallelogramLightDirectionSamples, 1, 15);
+            }
             if (config.features.extra.enableGlossyReflection) {
                 ImGui::SliderInt("Rays Per Reflection", &raysPerReflection, 1, 100);
                 ImGui::SliderFloat("Alpha Multiplier", &alphaModifier, 0.01f, 2.f);

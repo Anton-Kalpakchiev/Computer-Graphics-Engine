@@ -6,8 +6,12 @@ DISABLE_WARNINGS_PUSH()
 #include <glm/geometric.hpp>
 DISABLE_WARNINGS_POP()
 #include <cmath>
-#include <iostream>
 #include <fmt/printf.h>
+#include <iostream>
+
+int segmentLightSamples = 25;
+int parallelogramLightDirectionSamples = 5;
+
 
 
 // samples a segment light source using jittering
@@ -116,7 +120,7 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                      const SegmentLight segmentLight = std::get<SegmentLight>(light);
                      if (features.enableSoftShadow) {
                          glm::vec3 color = { 0.0f, 0.0f, 0.0f };
-                         float sampleSize = 10;
+                         float sampleSize = segmentLightSamples;
                          for (int i = 0; i < sampleSize; i++) {
                              glm::vec3 colorOfLight = { 0.0f, 0.0f, 0.0f };
                              glm::vec3 positionOfLight = { 0.0f, 0.0f, 0.0f };
@@ -132,8 +136,8 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                      const ParallelogramLight parallelogramLight = std::get<ParallelogramLight>(light);
                      if (features.enableSoftShadow) {
                          glm::vec3 color = { 0.0f, 0.0f, 0.0f };
-                         float sampleSizeA = 4;
-                         float sampleSizeB = 4;
+                         float sampleSizeA = parallelogramLightDirectionSamples;
+                         float sampleSizeB = parallelogramLightDirectionSamples;
                          for (int i = 0; i < sampleSizeA; i++) {
                              for (int k = 0; k < sampleSizeB; k++) {
                                  glm::vec3 colorOfLight = { 0.0f, 0.0f, 0.0f };

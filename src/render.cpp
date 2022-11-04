@@ -11,8 +11,9 @@
 #endif
 
 int raysPerPixelSide = 1;
-float focusPlaneDistance = 1.f;
-float blurStrength = .1f;
+int samplesDoF = 1;
+float focusPlaneDistance = 1.5f;
+float blurStrength = .005f;
 
 glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth, int rayDepthInitial){
     HitInfo hitInfo;
@@ -71,7 +72,8 @@ std::vector<Ray> getRaySamples(const glm::vec2& pixelPos, const glm::vec2& pixel
     std::vector<Ray> res;
 
     glm::vec2 pixelBox = pixelSize / float(n);
-    std::default_random_engine gen(time(NULL));
+    std::random_device rd;
+    std::mt19937 gen(rd());
     std::uniform_real_distribution<float> xJitter(0.f, pixelBox.x);
     std::uniform_real_distribution<float> yJitter(0.f, pixelBox.y);
     for (int i = 0; i < n; i++) {
@@ -98,7 +100,7 @@ glm::vec3 getIntersection(const Ray& ray, const Plane& plane) {
     return o + t * d;
 }
 
-std::vector<Ray> getDOFRays(const glm::vec2& pixelPos, const Trackball& camera, float focalLength, float jitter, int n) {
+std::vector<Ray> getDOFRays(const glm::vec2& pixelPos, const Trackball& camera, float focalLength, float samplingRadius, int n) {
     auto focalPlane = getPlane(camera, focalLength);
     auto cameraPlane = getPlane(camera, 0.f);
     auto ray = camera.generateRay(pixelPos);
@@ -111,21 +113,29 @@ std::vector<Ray> getDOFRays(const glm::vec2& pixelPos, const Trackball& camera, 
 
     auto focalPoint = getIntersection(ray, focalPlane);
 
-    float side = jitter / n;
-
-    std::default_random_engine gen(time(NULL));
-    std::uniform_real_distribution<float> jitterGen(0.f, side);
-    auto point = ray.origin - jitter * v1 / 2.f - jitter * v2 / 2.f;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> distrTheta(0.f, glm::pi<float>() * 2);
+    std::uniform_real_distribution<float> distrR(0.f, samplingRadius);
 
     std::vector<Ray> res;
     for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            auto newOrigin = point + i * side * v1 + j * side * v2;
-            newOrigin += jitterGen(gen) * v1 + jitterGen(gen);
-            auto direction = focalPoint - newOrigin;
-            res.emplace_back(Ray(newOrigin, direction));
-        }
+        float r = glm::sqrt(distrR(gen));
+        float theta = distrTheta(gen);
+        auto newOrigin = ray.origin + r * glm::cos(theta) * v1 + r * glm::sin(theta) * v2;
+        auto newDirection = focalPoint - newOrigin;
+        res.emplace_back(Ray(newOrigin, newDirection));
     }
+    //auto point = ray.origin;
+
+    //for (int i = 0; i < n; i++) {
+        //for (int j = 0; j < n; j++) {
+            //auto newOrigin = point + i * side * v1 + j * side * v2;
+            //newOrigin += jitterGen(gen) * v1 + jitterGen(gen) * v2;
+            //auto direction = focalPoint - newOrigin;
+            //res.emplace_back(Ray(newOrigin, direction));
+        //}
+    //}
     return res;
 }
 
@@ -159,13 +169,13 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
             }
 
             if (features.extra.enableDepthOfField) {
-                for (auto& ray : getDOFRays(normalizedPixelPos, camera, focusPlaneDistance, blurStrength, raysPerPixelSide)) {
+                for (auto& ray : getDOFRays(normalizedPixelPos, camera, focusPlaneDistance, blurStrength, samplesDoF)) {
                     colorSum += getFinalColor(scene, bvh, ray, features, 5);
                 }
-                raysCast += raysPerPixelSide * raysPerPixelSide;
+                raysCast += samplesDoF;
             }
 
-            if (!features.extra.enableMultipleRaysPerPixel) {
+            if (!features.extra.enableMultipleRaysPerPixel && !features.extra.enableDepthOfField) {
                 const Ray cameraRay = camera.generateRay(normalizedPixelPos);
                 colorSum += getFinalColor(scene, bvh, cameraRay, features, 5);
                 raysCast++;

@@ -164,12 +164,13 @@ int main(int argc, char** argv)
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Text("Options");
-            if (config.features.extra.enableMultipleRaysPerPixel || config.features.extra.enableDepthOfField) {
+            if (config.features.extra.enableMultipleRaysPerPixel) {
                 ImGui::SliderInt("Ray samples per pixel side", &raysPerPixelSide, 1, 10);
             }
             if (config.features.extra.enableDepthOfField) {
+                ImGui::SliderInt("DoF Samples", &samplesDoF, 1, 100);
                 ImGui::SliderFloat("Focal length", &focusPlaneDistance, .5f, 5.f);
-                ImGui::SliderFloat("Blur strength", &blurStrength, .01f, 1.f);
+                ImGui::SliderFloat("Blur strength", &blurStrength, .0005f, 0.1f);
             }
 
             ImGui::Separator();
@@ -366,6 +367,9 @@ int main(int argc, char** argv)
                         for (const auto& ray : rays) {
                             (void)getFinalColor(scene, bvh, ray, config.features, 0);
                         }
+                    }
+                    if (config.features.extra.enableDepthOfField) {
+
                     }
                     enableDebugDraw = false;
                 }

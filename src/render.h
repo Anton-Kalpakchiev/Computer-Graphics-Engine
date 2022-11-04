@@ -15,6 +15,7 @@ class BvhInterface;
 struct Features;
 
 extern int raysPerPixelSide;
+extern int samplesDoF;
 extern float focusPlaneDistance;
 extern float blurStrength;
 

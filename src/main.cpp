@@ -400,8 +400,9 @@ int main(int argc, char** argv)
                         glm::vec3 v1 = thisNormal * focalPlane.D + u * scalar - v * scalar;
                         glm::vec3 v2 = thisNormal * focalPlane.D - u * scalar - v * scalar;
                         glm::vec3 v3 = thisNormal * focalPlane.D - u * scalar + v * scalar;
-                        drawPlane(v0, v1, v2, v3, glm::vec3(.11f, .11f, .69f), .3f);
+                        //drawPlane(v0, v1, v2, v3, glm::vec3(.11f, .11f, .69f), .3f);
 
+                        drawPlane(v0, v1, v2, v3, glm::vec3(.11f, .11f, .69f), .3f);
                     }
                     enableDebugDraw = false;
                 }

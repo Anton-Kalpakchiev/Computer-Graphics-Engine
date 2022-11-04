@@ -101,6 +101,9 @@ void drawPlane(glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, glm::vec3
     if (!enableDebugDraw) {
         return;
     }
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glBegin(GL_QUADS);
     glColor4f(color.x, color.y, color.z, transparency);
     glVertex3fv(glm::value_ptr(v0));
@@ -108,6 +111,8 @@ void drawPlane(glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, glm::vec3
     glVertex3fv(glm::value_ptr(v2));
     glVertex3fv(glm::value_ptr(v3));
     glEnd();
+    glPopAttrib();
+
 }
 
 void debugDrawSphere(const Sphere& sphere) {

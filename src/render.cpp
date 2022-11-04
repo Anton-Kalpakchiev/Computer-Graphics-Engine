@@ -33,6 +33,17 @@ glm::vec3 recursiveRayTrace(const Scene& scene, const BvhInterface& bvh, Ray ray
             }
         }
 
+        if(features.extra.enableTransparency){
+            if(hitInfo.material.transparency == 1.0f){
+                return Lo;
+            }
+            Lo *= hitInfo.material.transparency;
+            Ray t = Ray();
+            t.origin = (0.00001f + ray.t) * ray.direction + ray.origin;
+            t.direction = ray.direction;
+            Lo += (1.0f - hitInfo.material.transparency) * recursiveRayTrace(scene, bvh, t, features, rayDepth - 1, rayDepthInitial);
+        }
+
         // Draw a white debug ray if the ray hits.
         if(features.enableShading){
             drawRay(ray, Lo);

@@ -309,18 +309,18 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
 
-        auto stack = std::stack<Node>();
-        stack.push(nodes[root]);
+        auto stack = std::stack<size_t>();
+        stack.push(root);
 
         while(!stack.empty()){
 
-            auto parent = stack.top();
+            const auto& parent = stack.top();
             stack.pop();
 
-            if (parent.data[0] == 1) {
+            if (nodes[parent].data[0] == 1) {
 
-                size_t beg = parent.data[2];
-                size_t end = parent.data[3];
+                size_t beg = nodes[parent].data[2];
+                size_t end = nodes[parent].data[3];
                 auto maybePrim = getIntersecting(primitives.begin() + beg, primitives.begin() + end, ray, hitInfo, m_pScene);
                 if (maybePrim.has_value()) {
                     prim = maybePrim.value();
@@ -328,24 +328,24 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
             } else {
 
-                auto left = nodes[parent.data[4]];
-                auto right = nodes[parent.data[5]];
+                auto left = nodes[parent].data[4];
+                auto right = nodes[parent].data[5];
 
                 auto rollBack = ray.t;
 
                 ray.t = std::numeric_limits<float>::max();
-                bool leftBox = intersectRayWithShape(left.aabb, ray);
+                bool leftBox = intersectRayWithShape(nodes[left].aabb, ray);
                 if(leftBox){
                     if(m_recursionLevel == RECURSION_LEVEL){
-                        drawAABB(left.aabb, DrawMode::Wireframe, glm::vec3(0.9f));
+                        drawAABB(nodes[left].aabb, DrawMode::Wireframe, glm::vec3(0.9f));
                     }
                 }
 
                 ray.t = std::numeric_limits<float>::max();
-                bool rightBox = intersectRayWithShape(right.aabb, ray);
+                bool rightBox = intersectRayWithShape(nodes[right].aabb, ray);
                 if(rightBox){
                     if(m_recursionLevel == RECURSION_LEVEL){
-                        drawAABB(right.aabb, DrawMode::Wireframe, glm::vec3(0.9f));
+                        drawAABB(nodes[right].aabb, DrawMode::Wireframe, glm::vec3(0.9f));
                     }
                 }
 
@@ -355,7 +355,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 if (rightBox) stack.push(right);
                 if(!leftBox && !rightBox){
                     if(m_recursionLevel == RECURSION_LEVEL){
-                        drawAABB(parent.aabb, DrawMode::Wireframe, {0.9f, 0.0f, 0.0f});
+                        drawAABB(nodes[parent].aabb, DrawMode::Wireframe, {0.9f, 0.0f, 0.0f});
                     }
                 }
             }

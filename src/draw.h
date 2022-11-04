@@ -18,7 +18,7 @@ extern bool enableDebugDraw;
 void drawExampleOfCustomVisualDebug();
 
 void drawRay(const Ray& ray, const glm::vec3& color = glm::vec3(1.0f));
-void drawPlane(glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, glm::vec3 color, float transparency);
+void drawPlane(glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, glm::vec3 color, float transparency = 1.0f);
 
 void drawAABB(const AxisAlignedBox& box, DrawMode drawMode = DrawMode::Filled, const glm::vec3& color = glm::vec3(1.0f), float transparency = 1.0f);
 

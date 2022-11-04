@@ -59,12 +59,16 @@ float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& deb
 
     Ray toLight = Ray {p, samplePos - p, 1.f};
     bool hit = bvh.intersect(toLight, hitInfo, features);
+
     if (hit) {
         drawRay(toLight, glm::vec3(1.f, 0.f, 0.f));
-        return 0.f;
+        if(!features.extra.enableTransparency){
+            return 0.0f;
+        }
+        return hitInfo.material.transparency;
     } else {
         drawRay(toLight, debugColor);
-        return 1.f;
+        return 1.0f;
     }
 }
 

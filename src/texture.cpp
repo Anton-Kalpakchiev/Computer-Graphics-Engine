@@ -24,24 +24,24 @@ glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Feat
 
         return image.pixels[std::floor(j) * image.width + std::floor(i)];
     }
+    
+    
+    float yUp = std::clamp((float)ceil((1 - texCoord.y) * image.height), 0.0f, (float)image.height - 1);
+    float xUp = std::clamp((float)ceil(texCoord.x * image.width), 0.0f, (float)image.width - 1);
 
-    int yUp = int(std::clamp((float)ceil((1 - texCoord.y) * image.height), 0.0f, (float)image.height));
-    int xUp = int(std::clamp((float)ceil(texCoord.x * image.width), 0.0f, (float)image.width));
+    float yDown = std::clamp((float)floor((1 - texCoord.y) * image.height), 0.0f, (float)image.height - 1);
+    float xDown = std::clamp((float)floor(texCoord.x * image.width), 0.0f, (float)image.width - 1);
 
-    int yDown = int(std::clamp((float)floor((1 - texCoord.y) * image.height), 0.0f, (float)image.height));
-    int xDown = int(std::clamp((float)floor(texCoord.x * image.width), 0.0f, (float)image.width));
-
-    float x_remainder = fmod(texCoord.x * image.width, 1);
-    float y_remainder = fmod(texCoord.y * image.height, 1);
+    float xSplit = fmod(texCoord.x * image.width, 1);
+    float ySplit = fmod((1 - texCoord.y) * image.height, 1);
 
     glm::vec3 xdyd = image.pixels[yDown * image.width + xDown];
     glm::vec3 xdyu = image.pixels[yUp * image.width + xDown];
     glm::vec3 xuyd = image.pixels[yDown * image.width + xUp];
     glm::vec3 xuyu = image.pixels[yUp * image.width + xUp];
 
-    glm::vec3 y_1 = (1 - y_remainder) * xdyd + y_remainder * xuyd;
-    glm::vec3 y_2 = (1 - y_remainder) * xdyu + y_remainder * xuyu;
+    glm::vec3 x1 = (1 - xSplit) * xdyd + xSplit * xuyd;
+    glm::vec3 x2 = (1 - xSplit) * xdyu + xSplit * xuyu;
 
-    return (1 - x_remainder) * y_1 + x_remainder * y_2;
-
+    return (1 - ySplit) * x1 + ySplit * x2;
 }

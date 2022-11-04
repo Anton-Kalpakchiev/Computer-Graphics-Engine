@@ -150,7 +150,7 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
         for (int x = 0; x != windowResolution.x; x++) {
 
             auto colorSum = glm::vec3(0.f);
-            size_t raysCast = 0;
+            size_t weight = 0;
 
             const glm::vec2 normalizedPixelPos {
                 float(x) / float(windowResolution.x) * 2.0f - 1.0f,
@@ -162,26 +162,32 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
             };
 
             if (features.extra.enableMultipleRaysPerPixel) {
+                auto color = glm::vec3(0.f);
                 for (auto& ray : getRaySamples(normalizedPixelPos, pixelSize, camera, raysPerPixelSide)) {
-                    colorSum += getFinalColor(scene, bvh, ray, features, 5);
+                    color += getFinalColor(scene, bvh, ray, features, 5);
                 }
-                raysCast += raysPerPixelSide * raysPerPixelSide;
+                color /= raysPerPixelSide * raysPerPixelSide;
+                colorSum += color;
+                weight++;
             }
 
             if (features.extra.enableDepthOfField) {
+                auto color = glm::vec3(0.f);
                 for (auto& ray : getDOFRays(normalizedPixelPos, camera, focusPlaneDistance, blurStrength, samplesDoF)) {
-                    colorSum += getFinalColor(scene, bvh, ray, features, 5);
+                    color += getFinalColor(scene, bvh, ray, features, 5);
                 }
-                raysCast += samplesDoF;
+                color /= samplesDoF;
+                colorSum += color;
+                weight++;
             }
 
             if (!features.extra.enableMultipleRaysPerPixel && !features.extra.enableDepthOfField) {
                 const Ray cameraRay = camera.generateRay(normalizedPixelPos);
                 colorSum += getFinalColor(scene, bvh, cameraRay, features, 5);
-                raysCast++;
+                weight++;
             }
 
-            glm::vec3 finalColor = colorSum / float(raysCast);
+            glm::vec3 finalColor = colorSum / float(weight);
             screen.setPixel(x, y, finalColor);
         }
     }

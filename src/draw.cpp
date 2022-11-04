@@ -44,6 +44,20 @@ void drawExampleOfCustomVisualDebug()
     glEnd();
 }
 
+void drawPlane(glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, glm::vec3 color, float transparency)
+{
+    if (!enableDebugDraw) {
+        return;
+    }
+    glBegin(GL_QUADS);
+    glColor4f(color.x, color.y, color.z, transparency);
+    glVertex3fv(glm::value_ptr(v0));
+    glVertex3fv(glm::value_ptr(v1));
+    glVertex3fv(glm::value_ptr(v2));
+    glVertex3fv(glm::value_ptr(v3));
+    glEnd();
+}
+
 
 void drawTriangle(const Vertex& v0, const Vertex& v1, const Vertex& v2 ) {
     glBegin(GL_TRIANGLES);

@@ -372,6 +372,9 @@ int main(int argc, char** argv)
 
                         auto pixelPos = cameraPos * 2.f - 1.f;
                         auto rays = getDOFRays(pixelPos, savedCamera.value(), focusPlaneDistance, blurStrength, samplesDoF);
+                        Plane focalPlane = getPlane(savedCamera.value(), focusPlaneDistance);
+                        
+
                         for (const auto& ray : rays) {
                             (void)getFinalColor(scene, bvh, ray, config.features, 0);
                         }

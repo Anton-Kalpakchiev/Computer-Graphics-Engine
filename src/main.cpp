@@ -63,7 +63,7 @@ int main(int argc, char** argv)
         camera.setCamera(config.cameras[0].lookAt, glm::radians(config.cameras[0].rotation), config.cameras[0].distanceFromLookAt);
 
         SceneType sceneType { SceneType::SingleTriangle };
-        std::optional<Ray> optDebugRay;
+        std::optional<std::vector<Ray>> optDebugRays;
         Scene scene = loadScenePrebuilt(sceneType, config.dataPath);
         BvhInterface bvh { &scene, config.features };
 
@@ -74,6 +74,7 @@ int main(int argc, char** argv)
         bool debugBVHLeaf { false };
         bool debugBVHTraversal {false};
         bool debugSampleRays { false };
+        bool debugDoFRays { false };
         ViewMode viewMode { ViewMode::Rasterization };
 
         glm::vec2 cameraPos;
@@ -86,7 +87,16 @@ int main(int argc, char** argv)
                     // Shoot a ray. Produce a ray from camera to the far plane.
                     cameraPos = window.getNormalizedCursorPos();
                     savedCamera = camera;
-                    optDebugRay = camera.generateRay(cameraPos * 2.0f - 1.0f);
+                    auto pixelPos = cameraPos * 2.f - 1.f;
+                    if (config.features.extra.enableMultipleRaysPerPixel) {
+                        auto ws = config.windowSize;
+                        auto pixelSize = glm::vec2(float(ws.x) * 0.00005f, float(ws.y) * 0.00005f);
+                        optDebugRays =  getRaySamples(pixelPos, pixelSize, savedCamera.value(), raysPerPixelSide);
+                    } if (config.features.extra.enableDepthOfField) {
+                        optDebugRays = getDOFRays(pixelPos, savedCamera.value(), focusPlaneDistance, blurStrength, samplesDoF);
+                    } else {
+                        optDebugRays = { camera.generateRay(pixelPos) };
+                    }
                 } break;
                 case GLFW_KEY_A: {
                     debugBVHLeafId++;
@@ -122,13 +132,13 @@ int main(int argc, char** argv)
                     "Custom",
                 };
                 if (ImGui::Combo("Scenes", reinterpret_cast<int*>(&sceneType), items.data(), int(items.size()))) {
-                    optDebugRay.reset();
+                    optDebugRays.reset();
                     scene = loadScenePrebuilt(sceneType, config.dataPath);
                     selectedLightIdx = scene.lights.empty() ? -1 : 0;
                     bvh = BvhInterface(&scene, config.features);
-                    if (optDebugRay) {
+                    if (optDebugRays && !debugSampleRays && !debugDoFRays) {
                         HitInfo dummy {};
-                        bvh.intersect(*optDebugRay, dummy, config.features);
+                        bvh.intersect(optDebugRays.value().at(0), dummy, config.features);
                     }
                 }
             }
@@ -231,6 +241,8 @@ int main(int argc, char** argv)
                 }
                 if (config.features.extra.enableMultipleRaysPerPixel)
                     ImGui::Checkbox("Ray sampling debug", &debugSampleRays);
+                if (config.features.extra.enableDepthOfField)
+                    ImGui::Checkbox("Depth of field debug", &debugDoFRays);
             }
 
             ImGui::Spacing();
@@ -351,27 +363,21 @@ int main(int argc, char** argv)
                 } else {
                     drawSceneOpenGL(scene);
                 }
-                if (optDebugRay) {
+                if (optDebugRays) {
                     // Call getFinalColor for the debug ray. Ignore the result but tell the function that it should
                     // draw the rays instead.
                     enableDebugDraw = true;
                     glDisable(GL_LIGHTING);
                     glDepthFunc(GL_LEQUAL);
-                    if (!debugSampleRays) {
-                        (void)getFinalColor(scene, bvh, *optDebugRay, config.features, 5);
-                    } else {
-                        auto pixelPos = cameraPos * 2.f - 1.f;
-                        auto ws = config.windowSize;
-                        auto pixelSize = glm::vec2(float(ws.x) * 0.00005f, float(ws.y) * 0.00005f);
-                        auto rays = getRaySamples(pixelPos, pixelSize, savedCamera.value(), raysPerPixelSide);
-                        for (const auto& ray : rays) {
+                    if (!debugSampleRays && !debugDoFRays) {
+                        (void)getFinalColor(scene, bvh, optDebugRays.value().at(0), config.features, 5);
+                    } else  {
+                        for (const auto& ray : optDebugRays.value()) {
                             (void)getFinalColor(scene, bvh, ray, config.features, 0);
                         }
                     }
                     if (config.features.extra.enableDepthOfField) {
 
-                        auto pixelPos = cameraPos * 2.f - 1.f;
-                        auto rays = getDOFRays(pixelPos, savedCamera.value(), focusPlaneDistance, blurStrength, samplesDoF);
                         Plane focalPlane = getPlane(savedCamera.value(), focusPlaneDistance);
                         glm::vec3 thisNormal = glm::normalize(focalPlane.normal);
                         glm::vec3 t = thisNormal;
@@ -396,11 +402,6 @@ int main(int argc, char** argv)
                         glm::vec3 v3 = thisNormal * focalPlane.D - u * scalar + v * scalar;
                         drawPlane(v0, v1, v2, v3, glm::vec3(.11f, .11f, .69f), .3f);
 
-
-                        for (const auto& ray : rays) {
-                            (void)getFinalColor(scene, bvh, ray, config.features, 0);
-                            /*drawRay(ray);*/
-                        }
                     }
                     enableDebugDraw = false;
                 }

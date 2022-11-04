@@ -178,8 +178,9 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
                     color += getFinalColor(scene, bvh, ray, features, 5);
                 }
                 color /= samplesDoF;
-                colorSum += color;
-                weight++;
+                // if both multiple rays per pixel and depth of field are enabled, we want the depth of field to affect the image more
+                colorSum += color * 3.f;
+                weight += 3;
             }
 
             if (!features.extra.enableMultipleRaysPerPixel && !features.extra.enableDepthOfField) {

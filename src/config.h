@@ -15,7 +15,7 @@ DISABLE_WARNINGS_POP()
 
 struct CameraConfig {
     float fieldOfView = 50.0f; // in degrees
-    float distanceFromLookAt = 1.0f;
+    float distanceFromLookAt = 3.0f;
     glm::vec3 lookAt = { 0.0f, 0.0f, 0.0f };
     glm::vec3 rotation = { 20.0f, 20.0f, 0.0f }; // in degrees
 };
